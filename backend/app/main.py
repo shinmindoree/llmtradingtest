@@ -34,6 +34,16 @@ class StrategyRequest(BaseModel):
     endDate: str
     commission: float
 
+class RunBacktestRequest(BaseModel):
+    code: str
+    capital: float
+    capital_pct: float
+    stop_loss: float
+    take_profit: float
+    start_date: str
+    end_date: str
+    commission: float
+
 client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 @app.post("/generate-code")
@@ -67,4 +77,18 @@ Take Profit: {req.takeProfit}
     except Exception as e:
         import traceback
         tb = traceback.format_exc()
-        raise HTTPException(status_code=500, detail=f"{str(e)}\n{tb}") 
+        raise HTTPException(status_code=500, detail=f"{str(e)}\n{tb}")
+
+@app.post("/run-backtest")
+async def run_backtest(req: RunBacktestRequest):
+    # TODO: 실제 백테스트 실행 로직 구현
+    # 현재는 더미 결과 반환
+    return {
+        "equity_curve": {
+            "labels": [req.start_date, req.end_date],
+            "values": [req.capital, req.capital * 1.05]
+        },
+        "total_return": 5.0,
+        "max_drawdown": -2.0,
+        "num_trades": 3
+    } 

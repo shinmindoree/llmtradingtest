@@ -20,7 +20,8 @@ const InputForm = () => {
     setLoading(true);
     setError('');
     try {
-      const response = await axios.post('http://127.0.0.1:8000/generate-code', {
+      // 1. generate-code 호출
+      const genRes = await axios.post('http://127.0.0.1:8000/generate-code', {
         strategy,
         capital: parseFloat(capital),
         capital_pct: parseFloat(capitalPct),
@@ -30,7 +31,20 @@ const InputForm = () => {
         endDate,
         commission: parseFloat(commission),
       });
-      const code = response.data.code;
+      const code = genRes.data.code;
+      // 2. run-backtest 호출
+      const backtestRes = await axios.post('http://127.0.0.1:8000/run-backtest', {
+        code,
+        capital: parseFloat(capital),
+        capital_pct: parseFloat(capitalPct),
+        stop_loss: parseFloat(stopLoss),
+        take_profit: parseFloat(takeProfit),
+        start_date: startDate,
+        end_date: endDate,
+        commission: parseFloat(commission),
+      });
+      const backtestResult = backtestRes.data;
+      // 3. 결과 페이지로 이동 (전략, 코드, 백테스트 결과 모두 전달)
       navigate('/result', {
         state: {
           strategy,
@@ -42,10 +56,11 @@ const InputForm = () => {
           endDate,
           commission,
           code,
+          backtestResult,
         },
       });
     } catch (err) {
-      setError('코드 변환 중 오류가 발생했습니다.');
+      setError('코드 변환 또는 백테스트 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
@@ -64,7 +79,19 @@ const InputForm = () => {
             onChange={e => setStrategy(e.target.value)}
             required
             rows={6}
-            style={{resize: 'vertical', fontSize: '1.1rem', padding: '1rem', borderRadius: '8px', border: '1px solid #ccc', marginTop: '0.5rem'}}
+            style={{
+              resize: 'vertical',
+              fontSize: '1.1rem',
+              padding: '1rem',
+              borderRadius: '16px',
+              border: '1.5px solid #bdbdbd',
+              marginTop: '0.5rem',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
+              background: '#fafbfc',
+              transition: 'border 0.2s, box-shadow 0.2s',
+            }}
+            onFocus={e => e.target.style.border = '1.5px solid #6c63ff'}
+            onBlur={e => e.target.style.border = '1.5px solid #bdbdbd'}
           />
         </label>
         <label>

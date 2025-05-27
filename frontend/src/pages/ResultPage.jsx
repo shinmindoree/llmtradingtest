@@ -13,11 +13,14 @@ const ResultPage = () => {
     return null;
   }
 
-  // 샘플 차트 데이터 (실제 백엔드 연동 전까지)
-  const sampleData = {
-    labels: ['1월', '2월', '3월', '4월', '5월'],
-    values: [10000, 10500, 10200, 10800, 11000],
-  };
+  // 실제 백테스트 결과 데이터
+  const backtest = data.backtestResult;
+  const chartData = backtest && backtest.equity_curve
+    ? {
+        labels: backtest.equity_curve.timestamps || backtest.equity_curve.labels || [],
+        values: backtest.equity_curve.values || [],
+      }
+    : null;
 
   return (
     <div>
@@ -39,7 +42,22 @@ const ResultPage = () => {
           </pre>
         </div>
       )}
-      <ResultChart data={sampleData} />
+      {backtest && (
+        <div style={{marginBottom: '2rem'}}>
+          <h3>주요 성과 지표</h3>
+          <ul>
+            <li><b>총 수익률:</b> {backtest.total_return ?? '-'}%</li>
+            <li><b>최대 낙폭:</b> {backtest.max_drawdown ?? '-'}</li>
+            <li><b>트레이드 수:</b> {backtest.num_trades ?? '-'}</li>
+            {/* 필요시 추가 지표 */}
+          </ul>
+        </div>
+      )}
+      {chartData ? (
+        <ResultChart data={chartData} />
+      ) : (
+        <div style={{color: '#888', marginTop: '2rem'}}>차트 데이터가 없습니다.</div>
+      )}
     </div>
   );
 };
