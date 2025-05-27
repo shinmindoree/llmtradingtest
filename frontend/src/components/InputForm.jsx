@@ -3,14 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const InputForm = () => {
-  const [strategy, setStrategy] = useState('');
-  const [capital, setCapital] = useState('');
-  const [capitalPct, setCapitalPct] = useState('');
-  const [stopLoss, setStopLoss] = useState('');
-  const [takeProfit, setTakeProfit] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [commission, setCommission] = useState('');
+  const [strategy, setStrategy] = useState('RSI 30이하면 매수');
+  const [capital, setCapital] = useState('10000');
+  const [capitalPct, setCapitalPct] = useState('0.3');
+  const [stopLoss, setStopLoss] = useState('2');
+  const [takeProfit, setTakeProfit] = useState('5');
+  const [startDate, setStartDate] = useState('2024-05-19');
+  const [endDate, setEndDate] = useState('2024-05-24');
+  const [commission, setCommission] = useState('0.0004');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
