@@ -22,22 +22,39 @@ app.add_middleware(
 class StrategyRequest(BaseModel):
     strategy: str
     capital: float
+    capital_pct: float
     stopLoss: float
     takeProfit: float
+    startDate: str
+    endDate: str
+    commission: float
 
 client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 @app.post("/generate-code")
 async def generate_code(req: StrategyRequest):
-    prompt = f"내가 인풋으로 입력한 전략을 파이썬 스크립트로 변환해줘. 전략: {req.strategy}"
+    prompt = f'''
+아래의 트레이딩 전략을 backtrader의 Strategy 클래스로 변환해줘.
+- 진입 시 size는 (self.broker.getvalue() * {req.capital_pct}) / self.data.close[0]로 계산
+- Stop Loss, Take Profit, 수수료율, 자본금 등은 파라미터로 전달
+- 불필요한 설명 없이 코드만 반환해줘.
+
+전략 설명: {req.strategy}
+자본금: {req.capital}
+투입비율: {req.capital_pct}
+Stop Loss: {req.stopLoss}
+Take Profit: {req.takeProfit}
+백테스트 기간: {req.startDate} ~ {req.endDate}
+수수료율: {req.commission}
+'''
     try:
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": "당신은 트레이딩 전략을 파이썬 코드로 변환해주는 전문가입니다."},
+                {"role": "system", "content": "당신은 트레이딩 전략을 backtrader 코드로 변환해주는 전문가입니다."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=800,
+            max_tokens=1200,
             temperature=0.2,
         )
         code = response.choices[0].message.content
