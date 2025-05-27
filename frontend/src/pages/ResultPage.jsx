@@ -31,6 +31,14 @@ const ResultPage = () => {
           <li><b>Take Profit:</b> {data.takeProfit}%</li>
         </ul>
       </div>
+      {data.code && (
+        <div style={{marginBottom: '2rem'}}>
+          <h3>변환된 파이썬 코드</h3>
+          <pre style={{background: '#222', color: '#fff', padding: '1rem', borderRadius: '8px', overflowX: 'auto'}}>
+            {data.code}
+          </pre>
+        </div>
+      )}
       <ResultChart data={sampleData} />
     </div>
   );

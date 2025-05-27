@@ -1,24 +1,42 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const InputForm = () => {
   const [strategy, setStrategy] = useState('');
   const [capital, setCapital] = useState('');
   const [stopLoss, setStopLoss] = useState('');
   const [takeProfit, setTakeProfit] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // 입력값을 결과 페이지로 전달
-    navigate('/result', {
-      state: {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await axios.post('http://127.0.0.1:8000/generate-code', {
         strategy,
-        capital,
-        stopLoss,
-        takeProfit,
-      },
-    });
+        capital: parseFloat(capital),
+        stopLoss: parseFloat(stopLoss),
+        takeProfit: parseFloat(takeProfit),
+      });
+      const code = response.data.code;
+      navigate('/result', {
+        state: {
+          strategy,
+          capital,
+          stopLoss,
+          takeProfit,
+          code,
+        },
+      });
+    } catch (err) {
+      setError('코드 변환 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -45,7 +63,8 @@ const InputForm = () => {
           <input type="number" name="takeProfit" placeholder="예: 5"
             value={takeProfit} onChange={e => setTakeProfit(e.target.value)} required />
         </label>
-        <button type="submit">전략 제출</button>
+        <button type="submit" disabled={loading}>{loading ? '전송 중...' : '전략 제출'}</button>
+        {error && <div style={{color: 'red', marginTop: '1rem'}}>{error}</div>}
       </form>
     </div>
   );
