@@ -8,8 +8,8 @@ const InputForm = () => {
   const [capitalPct, setCapitalPct] = useState('0.3');
   const [stopLoss, setStopLoss] = useState('2');
   const [takeProfit, setTakeProfit] = useState('5');
-  const [startDate, setStartDate] = useState('2024-05-19');
-  const [endDate, setEndDate] = useState('2024-05-24');
+  const [startDate, setStartDate] = useState('2025-05-19');
+  const [endDate, setEndDate] = useState('2025-05-24');
   const [commission, setCommission] = useState('0.0004');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
