@@ -87,7 +87,8 @@ const InputForm = () => {
               border: '1.5px solid #bdbdbd',
               marginTop: '0.5rem',
               boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
-              background: '#fafbfc',
+              background: '#f5f5f5',
+              color: '#000',
               transition: 'border 0.2s, box-shadow 0.2s',
             }}
             onFocus={e => e.target.style.border = '1.5px solid #6c63ff'}

@@ -1,0 +1,67 @@
+.home-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #1a1a1a;
+  color: #f0f0f0;
+  min-height: 100vh;
+}
+
+.app-title {
+  color: #FFD700;
+  text-align: center;
+  margin-bottom: 30px;
+  font-size: 2.2rem;
+  font-weight: 700;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.chart-section {
+  background-color: #202020;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.chart-section h2 {
+  color: #2962FF;
+  margin-bottom: 15px;
+  font-size: 1.5rem;
+  border-bottom: 1px solid #333;
+  padding-bottom: 10px;
+}
+
+.strategy-section {
+  background-color: #202020;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.strategy-section h2 {
+  color: #26a69a;
+  margin-bottom: 15px;
+  font-size: 1.5rem;
+  border-bottom: 1px solid #333;
+  padding-bottom: 10px;
+}
+
+.test-section {
+  background-color: #202020;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .app-title {
+    font-size: 1.8rem;
+  }
+  
+  .chart-section, .strategy-section, .test-section {
+    padding: 15px;
+  }
+} 

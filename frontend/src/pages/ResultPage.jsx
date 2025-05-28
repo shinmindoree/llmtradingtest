@@ -1,6 +1,7 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import ResultChart from '../components/ResultChart';
+import BTCUSDTChart from '../components/BTCUSDTChart';
 
 const ResultPage = () => {
   const location = useLocation();
@@ -24,6 +25,7 @@ const ResultPage = () => {
 
   return (
     <div>
+      <BTCUSDTChart />
       <h1>백테스트 결과</h1>
       <div style={{marginBottom: '2rem'}}>
         <h3>입력한 전략 정보</h3>
