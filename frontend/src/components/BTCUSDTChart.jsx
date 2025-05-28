@@ -7,6 +7,8 @@ const BTCChart = () => {
   const candlestickSeriesRef = useRef(null);
   const lineSeriesRef = useRef(null);
   const [lastPrice, setLastPrice] = useState(null);
+  const [priceChange, setPriceChange] = useState({ value: 0, percentage: 0 });
+  const [volume, setVolume] = useState(null);
 
   useEffect(() => {
     if (chartContainerRef.current) {
@@ -15,16 +17,35 @@ const BTCChart = () => {
         width: chartContainerRef.current.clientWidth,
         height: 400,
         layout: {
-          background: { color: '#1E222D' },
-          textColor: '#DDD',
+          background: { color: '#131722' },
+          textColor: '#d1d4dc',
         },
         grid: {
-          vertLines: { color: '#2B2B43' },
-          horzLines: { color: '#363C4E' },
+          vertLines: { color: '#2a2e39' },
+          horzLines: { color: '#363c4e' },
         },
         timeScale: {
           timeVisible: true,
           secondsVisible: false,
+          borderColor: '#363c4e',
+        },
+        rightPriceScale: {
+          borderColor: '#363c4e',
+        },
+        crosshair: {
+          mode: 1,
+          vertLine: {
+            color: '#758696',
+            width: 1,
+            style: 1,
+            labelBackgroundColor: '#2a2e39',
+          },
+          horzLine: {
+            color: '#758696',
+            width: 1,
+            style: 1,
+            labelBackgroundColor: '#2a2e39',
+          },
         },
       });
 
@@ -66,7 +87,8 @@ const BTCChart = () => {
               open: parseFloat(d[1]),
               high: parseFloat(d[2]),
               low: parseFloat(d[3]),
-              close: parseFloat(d[4])
+              close: parseFloat(d[4]),
+              volume: parseFloat(d[5])
             };
           });
           
@@ -80,10 +102,26 @@ const BTCChart = () => {
           }));
           lineSeries.setData(lineData);
           
-          // 최신 가격 저장
+          // 최신 가격 정보 저장
           if (cdata.length > 0) {
             const lastCandle = cdata[cdata.length - 1];
+            const prevCandle = cdata[cdata.length - 2];
+            
             setLastPrice(lastCandle.close);
+            
+            // 가격 변동 계산
+            const change = lastCandle.close - prevCandle.close;
+            const changePercent = (change / prevCandle.close) * 100;
+            setPriceChange({
+              value: change,
+              percentage: changePercent
+            });
+            
+            // 거래량 계산 (24시간)
+            const last24hVolume = cdata
+              .slice(cdata.length - 24)
+              .reduce((sum, candle) => sum + candle.volume, 0);
+            setVolume(last24hVolume);
             
             try {
               // 지지선과 저항선 계산 (간단한 예: 최근 종가의 ±5%)
@@ -145,20 +183,35 @@ const BTCChart = () => {
   }, []);
 
   return (
-    <div>
+    <div className="chart-wrapper">
       <div 
         ref={chartContainerRef} 
         style={{ 
           width: '100%', 
-          height: '400px',
-          marginBottom: '20px'
+          height: '400px'
         }}
       />
+      
       {lastPrice && (
-        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-          <span style={{ color: '#FFD700', fontWeight: 'bold' }}>
-            현재 BTC/USDT 가격: ${lastPrice.toLocaleString()}
-          </span>
+        <div className="price-info">
+          <div className="price-item">
+            <span className="price-label">BTC/USDT</span>
+            <span className="price-value">${lastPrice.toLocaleString()}</span>
+          </div>
+          
+          <div className="price-item">
+            <span className="price-label">24h 변동</span>
+            <span className={`price-value ${priceChange.value >= 0 ? 'positive' : 'negative'}`}>
+              {priceChange.value >= 0 ? '+' : ''}{priceChange.value.toFixed(2)} ({priceChange.percentage.toFixed(2)}%)
+            </span>
+          </div>
+          
+          {volume && (
+            <div className="price-item">
+              <span className="price-label">24h 거래량</span>
+              <span className="price-value">{(volume / 1000000).toFixed(2)}M</span>
+            </div>
+          )}
         </div>
       )}
     </div>
