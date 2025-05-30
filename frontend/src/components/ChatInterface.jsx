@@ -25,8 +25,22 @@ const ChatInterface = ({ onBacktestStart }) => {
     takeProfit: 5,
     startDate: '2024-01-01',
     endDate: '2024-01-10',
-    commission: 0.0004
+    commission: 0.0004,
+    timeframe: '15m'
   });
+  
+  // Binance API 데이터 표시를 위한 상태 추가
+  const [priceData, setPriceData] = useState([]);
+  const [showPriceData, setShowPriceData] = useState(false);
+  const [priceDataStats, setPriceDataStats] = useState(null);
+  const [loadingPriceData, setLoadingPriceData] = useState(false);
+  const [priceDataError, setPriceDataError] = useState('');
+  
+  // 페이지네이션과 정렬을 위한 상태 추가
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [sortField, setSortField] = useState('timestamp');
+  const [sortDirection, setSortDirection] = useState('asc');
   
   // 타이핑 효과를 위한 상태 추가
   const [isTyping, setIsTyping] = useState(false);
@@ -211,6 +225,7 @@ const ChatInterface = ({ onBacktestStart }) => {
         startDate: parameters.startDate,
         endDate: parameters.endDate,
         commission: parameters.commission,
+        timeframe: parameters.timeframe,
       });
       
       const generatedCode = genRes.data.code;
@@ -286,7 +301,7 @@ const ChatInterface = ({ onBacktestStart }) => {
     setIsEditing(false);
   };
 
-  // 백테스트 실행
+  // 백테스트 실행 & 가격 데이터 가져오기
   const handleRunBacktest = async () => {
     if (!currentCode) return;
     
@@ -303,6 +318,7 @@ const ChatInterface = ({ onBacktestStart }) => {
         start_date: parameters.startDate,
         end_date: parameters.endDate,
         commission: parseFloat(parameters.commission),
+        timeframe: parameters.timeframe
       });
       
       const backtestRes = await axios.post('http://127.0.0.1:8000/run-backtest', {
@@ -314,6 +330,7 @@ const ChatInterface = ({ onBacktestStart }) => {
         start_date: parameters.startDate,
         end_date: parameters.endDate,
         commission: parseFloat(parameters.commission),
+        timeframe: parameters.timeframe
       });
       
       const result = backtestRes.data;
@@ -385,6 +402,104 @@ const ChatInterface = ({ onBacktestStart }) => {
       };
       
       setMessages(prev => [...prev, backtestMessage]);
+      
+      // 추가: Binance API 데이터 가져오기
+      setLoadingPriceData(true);
+      setPriceDataError('');
+      setShowPriceData(true);
+      
+      try {
+        const priceDataRes = await axios.post('http://127.0.0.1:8000/debug/fetch-data', {
+          start_date: parameters.startDate,
+          end_date: parameters.endDate,
+          max_data_points: 10000,
+          timeframe: parameters.timeframe
+        });
+        
+        if (priceDataRes.data && priceDataRes.data.data) {
+          const ohlcvData = priceDataRes.data.data;
+          setPriceData(ohlcvData);
+          
+          // 간단한 통계 계산
+          if (ohlcvData.length > 0) {
+            const openPrices = ohlcvData.map(item => parseFloat(item.open));
+            const closePrices = ohlcvData.map(item => parseFloat(item.close));
+            const highPrices = ohlcvData.map(item => parseFloat(item.high));
+            const lowPrices = ohlcvData.map(item => parseFloat(item.low));
+            const volumes = ohlcvData.map(item => parseFloat(item.volume));
+            
+            const avgVolume = volumes.reduce((a, b) => a + b, 0) / volumes.length;
+            const maxHigh = Math.max(...highPrices);
+            const minLow = Math.min(...lowPrices);
+            const volatility = ((maxHigh - minLow) / minLow) * 100;
+            const overallReturn = ((closePrices[closePrices.length - 1] - openPrices[0]) / openPrices[0]) * 100;
+            
+            // 상승/하락 데이터 포인트 수 계산
+            let upCount = 0;
+            let downCount = 0;
+            let noChangeCount = 0;
+            
+            for (let i = 1; i < ohlcvData.length; i++) {
+              const prevClose = parseFloat(ohlcvData[i-1].close);
+              const currentClose = parseFloat(ohlcvData[i].close);
+              
+              if (currentClose > prevClose) upCount++;
+              else if (currentClose < prevClose) downCount++;
+              else noChangeCount++;
+            }
+            
+            // 최대 상승/하락 구간 찾기
+            let maxConsecutiveUp = 0;
+            let maxConsecutiveDown = 0;
+            let currentConsecutiveUp = 0;
+            let currentConsecutiveDown = 0;
+            
+            for (let i = 1; i < ohlcvData.length; i++) {
+              const prevClose = parseFloat(ohlcvData[i-1].close);
+              const currentClose = parseFloat(ohlcvData[i].close);
+              
+              if (currentClose > prevClose) {
+                currentConsecutiveUp++;
+                currentConsecutiveDown = 0;
+                maxConsecutiveUp = Math.max(maxConsecutiveUp, currentConsecutiveUp);
+              } else if (currentClose < prevClose) {
+                currentConsecutiveDown++;
+                currentConsecutiveUp = 0;
+                maxConsecutiveDown = Math.max(maxConsecutiveDown, currentConsecutiveDown);
+              } else {
+                currentConsecutiveUp = 0;
+                currentConsecutiveDown = 0;
+              }
+            }
+            
+            const stats = {
+              dataPoints: ohlcvData.length,
+              startPrice: openPrices[0].toFixed(2),
+              endPrice: closePrices[closePrices.length - 1].toFixed(2),
+              highestPrice: maxHigh.toFixed(2),
+              lowestPrice: minLow.toFixed(2),
+              volatility: volatility.toFixed(2),
+              averageVolume: avgVolume.toFixed(2),
+              overallReturn: overallReturn.toFixed(2),
+              upCount,
+              downCount,
+              noChangeCount,
+              maxConsecutiveUp,
+              maxConsecutiveDown,
+              timeframe: parameters.timeframe,
+              dateRange: `${new Date(ohlcvData[0].timestamp).toLocaleDateString()} ~ ${new Date(ohlcvData[ohlcvData.length-1].timestamp).toLocaleDateString()}`
+            };
+            
+            setPriceDataStats(stats);
+          }
+        }
+      } catch (priceDataError) {
+        console.error('가격 데이터 가져오기 오류:', priceDataError);
+        setPriceDataError(`가격 데이터 가져오기 오류: ${priceDataError.message}`);
+      } finally {
+        setLoadingPriceData(false);
+      }
+      
       setIsLoading(false);
       
     } catch (error) {
@@ -416,6 +531,103 @@ const ChatInterface = ({ onBacktestStart }) => {
       ...prev,
       [name]: value
     }));
+  };
+
+  // 정렬 처리 함수
+  const handleSort = (field) => {
+    if (sortField === field) {
+      // 같은 필드를 다시 클릭하면 정렬 방향 전환
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // 새 필드 선택 시 오름차순으로 시작
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+  
+  // 정렬된 데이터 계산
+  const getSortedData = () => {
+    if (!priceData.length) return [];
+    
+    return [...priceData].sort((a, b) => {
+      let aValue, bValue;
+      
+      if (sortField === 'timestamp') {
+        aValue = new Date(a[sortField]).getTime();
+        bValue = new Date(b[sortField]).getTime();
+      } else {
+        aValue = parseFloat(a[sortField]);
+        bValue = parseFloat(b[sortField]);
+      }
+      
+      if (sortDirection === 'asc') {
+        return aValue - bValue;
+      } else {
+        return bValue - aValue;
+      }
+    });
+  };
+  
+  // 현재 페이지 데이터 계산
+  const getCurrentPageData = () => {
+    const sortedData = getSortedData();
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    return sortedData.slice(startIndex, startIndex + rowsPerPage);
+  };
+  
+  // 페이지 이동
+  const goToPage = (page) => {
+    setCurrentPage(page);
+  };
+  
+  // 페이지 버튼 생성
+  const getPageButtons = () => {
+    const totalPages = Math.ceil(priceData.length / rowsPerPage);
+    const buttons = [];
+    
+    // 현재 페이지 주변 5개 페이지만 표시
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, currentPage + 2);
+    
+    if (startPage > 1) {
+      buttons.push(
+        <button key="first" onClick={() => goToPage(1)}>1</button>
+      );
+      if (startPage > 2) {
+        buttons.push(<span key="dots1">...</span>);
+      }
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      buttons.push(
+        <button 
+          key={i} 
+          className={i === currentPage ? 'active' : ''}
+          onClick={() => goToPage(i)}
+        >
+          {i}
+        </button>
+      );
+    }
+    
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) {
+        buttons.push(<span key="dots2">...</span>);
+      }
+      buttons.push(
+        <button key="last" onClick={() => goToPage(totalPages)}>
+          {totalPages}
+        </button>
+      );
+    }
+    
+    return buttons;
+  };
+  
+  // 행 표시 개수 변경
+  const handleRowsPerPageChange = (e) => {
+    setRowsPerPage(Number(e.target.value));
+    setCurrentPage(1); // 페이지 1로 리셋
   };
 
   return (
@@ -498,15 +710,34 @@ const ChatInterface = ({ onBacktestStart }) => {
             </div>
           </div>
           
-          <div className="input-group">
-            <label>수수료율</label>
-            <input 
-              type="number" 
-              step="0.0001" 
-              name="commission" 
-              value={parameters.commission}
-              onChange={handleParameterChange}
-            />
+          <div className="form-row">
+            <div className="input-group">
+              <label>시간 간격</label>
+              <select 
+                name="timeframe" 
+                value={parameters.timeframe}
+                onChange={handleParameterChange}
+              >
+                <option value="1m">1분</option>
+                <option value="5m">5분</option>
+                <option value="15m">15분</option>
+                <option value="30m">30분</option>
+                <option value="1h">1시간</option>
+                <option value="4h">4시간</option>
+                <option value="1d">일봉</option>
+              </select>
+            </div>
+            
+            <div className="input-group">
+              <label>수수료율</label>
+              <input 
+                type="number" 
+                step="0.0001" 
+                name="commission" 
+                value={parameters.commission}
+                onChange={handleParameterChange}
+              />
+            </div>
           </div>
           
           <div className="preset-dates">
@@ -634,6 +865,92 @@ const ChatInterface = ({ onBacktestStart }) => {
                   )}
                 </div>
               )}
+              
+              {message.priceDataStats && (
+                <div className="price-data-message">
+                  <div className="data-stats">
+                    <h4>가격 데이터 통계</h4>
+                    <div className="stats-grid">
+                      <div className="stat-item">
+                        <span className="stat-label">데이터 포인트 수:</span>
+                        <span className="stat-value">{message.priceDataStats.dataPoints}</span>
+                      </div>
+                      <div className="stat-item">
+                        <span className="stat-label">날짜 범위:</span>
+                        <span className="stat-value">{message.priceDataStats.dateRange}</span>
+                      </div>
+                      <div className="stat-item">
+                        <span className="stat-label">캔들 시간 간격:</span>
+                        <span className="stat-value">{message.priceDataStats.timeframe}</span>
+                      </div>
+                      <div className="stat-item">
+                        <span className="stat-label">시작 가격:</span>
+                        <span className="stat-value">${message.priceDataStats.startPrice}</span>
+                      </div>
+                      <div className="stat-item">
+                        <span className="stat-label">종료 가격:</span>
+                        <span className="stat-value">${message.priceDataStats.endPrice}</span>
+                      </div>
+                      <div className="stat-item">
+                        <span className="stat-label">최고 가격:</span>
+                        <span className="stat-value">${message.priceDataStats.highestPrice}</span>
+                      </div>
+                      <div className="stat-item">
+                        <span className="stat-label">최저 가격:</span>
+                        <span className="stat-value">${message.priceDataStats.lowestPrice}</span>
+                      </div>
+                      <div className="stat-item">
+                        <span className="stat-label">변동성:</span>
+                        <span className="stat-value">{message.priceDataStats.volatility}%</span>
+                      </div>
+                      <div className="stat-item">
+                        <span className="stat-label">전체 수익률:</span>
+                        <span className={`stat-value ${parseFloat(message.priceDataStats.overallReturn) >= 0 ? 'positive' : 'negative'}`}>
+                          {message.priceDataStats.overallReturn}%
+                        </span>
+                      </div>
+                      <div className="stat-item">
+                        <span className="stat-label">상승/하락/유지:</span>
+                        <span className="stat-value">
+                          <span className="positive">{message.priceDataStats.upCount}</span> / 
+                          <span className="negative">{message.priceDataStats.downCount}</span> / 
+                          <span>{message.priceDataStats.noChangeCount}</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {message.priceData && (
+                    <div className="data-table-container">
+                      <h4>OHLCV 데이터 샘플 (총 {message.totalDataPoints}개 중 처음 20개)</h4>
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>타임스탬프</th>
+                            <th>시가</th>
+                            <th>고가</th>
+                            <th>저가</th>
+                            <th>종가</th>
+                            <th>거래량</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {message.priceData.map((item, index) => (
+                            <tr key={index}>
+                              <td>{new Date(item.timestamp).toLocaleString()}</td>
+                              <td>{parseFloat(item.open).toFixed(2)}</td>
+                              <td>{parseFloat(item.high).toFixed(2)}</td>
+                              <td>{parseFloat(item.low).toFixed(2)}</td>
+                              <td>{parseFloat(item.close).toFixed(2)}</td>
+                              <td>{parseFloat(item.volume).toFixed(2)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <div className="message-time">
               {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -716,6 +1033,204 @@ const ChatInterface = ({ onBacktestStart }) => {
           </div>
         </form>
       </div>
+      
+      {/* 가격 데이터 섹션 (채팅 UI 아래에 추가) */}
+      {showPriceData && (
+        <div className="price-data-section">
+          <div className="section-header">
+            <h3>가격 데이터 통계</h3>
+            <button
+              className="close-section-btn"
+              onClick={() => setShowPriceData(false)}
+            >
+              닫기
+            </button>
+          </div>
+          
+          {loadingPriceData ? (
+            <div className="loading-indicator price-data-loading">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          ) : priceDataError ? (
+            <div className="error-message">{priceDataError}</div>
+          ) : (
+            <>
+              {priceDataStats && (
+                <div className="data-stats-grid">
+                  <div className="stats-header">
+                    <div className="stat-item main-stat">
+                      <span className="stat-label">데이터 포인트 수:</span>
+                      <span className="stat-value">{priceDataStats.dataPoints}</span>
+                    </div>
+                    
+                    <div className="stat-item main-stat">
+                      <span className="stat-label">날짜 범위:</span>
+                      <span className="stat-value">{priceDataStats.dateRange}</span>
+                    </div>
+                    
+                    <div className="stat-item main-stat">
+                      <span className="stat-label">캔들 시간 간격:</span>
+                      <span className="stat-value">{priceDataStats.timeframe}</span>
+                    </div>
+                    
+                    <div className="stat-item main-stat">
+                      <span className="stat-label">시작 가격:</span>
+                      <span className="stat-value">${priceDataStats.startPrice}</span>
+                    </div>
+                    
+                    <div className="stat-item main-stat">
+                      <span className="stat-label">종료 가격:</span>
+                      <span className="stat-value">${priceDataStats.endPrice}</span>
+                    </div>
+                    
+                    <div className="stat-item main-stat">
+                      <span className="stat-label">전체 수익률:</span>
+                      <span className={`stat-value ${parseFloat(priceDataStats.overallReturn) >= 0 ? 'positive' : 'negative'}`}>
+                        {priceDataStats.overallReturn}%
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="stats-grid">
+                    <div className="stat-item">
+                      <span className="stat-label">최고 가격:</span>
+                      <span className="stat-value">${priceDataStats.highestPrice}</span>
+                    </div>
+                    
+                    <div className="stat-item">
+                      <span className="stat-label">최저 가격:</span>
+                      <span className="stat-value">${priceDataStats.lowestPrice}</span>
+                    </div>
+                    
+                    <div className="stat-item">
+                      <span className="stat-label">변동성:</span>
+                      <span className="stat-value">{priceDataStats.volatility}%</span>
+                    </div>
+                    
+                    <div className="stat-item">
+                      <span className="stat-label">상승/하락/유지:</span>
+                      <span className="stat-value">
+                        <span className="positive">{priceDataStats.upCount}</span> / 
+                        <span className="negative">{priceDataStats.downCount}</span> / 
+                        <span>{priceDataStats.noChangeCount}</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {priceData.length > 0 && (
+                <div className="price-data-table-container">
+                  <div className="table-header">
+                    <h4>OHLCV 데이터 (총 {priceData.length}개)</h4>
+                    <div className="table-controls">
+                      <div className="rows-per-page">
+                        <label>표시 개수:</label>
+                        <select value={rowsPerPage} onChange={handleRowsPerPageChange}>
+                          <option value={10}>10</option>
+                          <option value={20}>20</option>
+                          <option value={50}>50</option>
+                          <option value={100}>100</option>
+                        </select>
+                      </div>
+                      <div className="page-info">
+                        페이지 {currentPage} / {Math.ceil(priceData.length / rowsPerPage)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="table-wrapper">
+                    <table className="price-data-table">
+                      <thead>
+                        <tr>
+                          <th 
+                            className={sortField === 'timestamp' ? `sorted ${sortDirection}` : ''}
+                            onClick={() => handleSort('timestamp')}
+                          >
+                            타임스탬프
+                          </th>
+                          <th 
+                            className={sortField === 'open' ? `sorted ${sortDirection}` : ''}
+                            onClick={() => handleSort('open')}
+                          >
+                            시가
+                          </th>
+                          <th 
+                            className={sortField === 'high' ? `sorted ${sortDirection}` : ''}
+                            onClick={() => handleSort('high')}
+                          >
+                            고가
+                          </th>
+                          <th 
+                            className={sortField === 'low' ? `sorted ${sortDirection}` : ''}
+                            onClick={() => handleSort('low')}
+                          >
+                            저가
+                          </th>
+                          <th 
+                            className={sortField === 'close' ? `sorted ${sortDirection}` : ''}
+                            onClick={() => handleSort('close')}
+                          >
+                            종가
+                          </th>
+                          <th 
+                            className={sortField === 'volume' ? `sorted ${sortDirection}` : ''}
+                            onClick={() => handleSort('volume')}
+                          >
+                            거래량
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {getCurrentPageData().map((item, index) => {
+                          return (
+                            <tr key={index}>
+                              <td>{new Date(item.timestamp).toLocaleString()}</td>
+                              <td>{parseFloat(item.open).toFixed(2)}</td>
+                              <td>{parseFloat(item.high).toFixed(2)}</td>
+                              <td>{parseFloat(item.low).toFixed(2)}</td>
+                              <td>{parseFloat(item.close).toFixed(2)}</td>
+                              <td>{parseFloat(item.volume).toFixed(2)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="pagination">
+                    <button 
+                      onClick={() => goToPage(1)} 
+                      disabled={currentPage === 1}
+                    >
+                      &laquo;
+                    </button>
+                    <button 
+                      onClick={() => goToPage(currentPage - 1)} 
+                      disabled={currentPage === 1}
+                    >
+                      &lt;
+                    </button>
+                    {getPageButtons()}
+                    <button 
+                      onClick={() => goToPage(currentPage + 1)} 
+                      disabled={currentPage === Math.ceil(priceData.length / rowsPerPage)}
+                    >
+                      &gt;
+                    </button>
+                    <button 
+                      onClick={() => goToPage(Math.ceil(priceData.length / rowsPerPage))} 
+                      disabled={currentPage === Math.ceil(priceData.length / rowsPerPage)}
+                    >
+                      &raquo;
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 };

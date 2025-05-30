@@ -40,6 +40,7 @@ class StrategyRequest(BaseModel):
     startDate: str
     endDate: str
     commission: float
+    timeframe: str = "15m"  # 기본값 15분
 
 class RunBacktestRequest(BaseModel):
     code: str
@@ -50,6 +51,7 @@ class RunBacktestRequest(BaseModel):
     start_date: str
     end_date: str
     commission: float
+    timeframe: str = "15m"  # 기본값 15분
 
 client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -96,6 +98,7 @@ class Strategy(bt.Strategy):
 Stop Loss: {req.stopLoss}
 Take Profit: {req.takeProfit}
 백테스트 기간: {req.startDate} ~ {req.endDate}
+시간 간격: {req.timeframe}
 수수료율: {req.commission}
 '''
     try:
@@ -125,8 +128,8 @@ Take Profit: {req.takeProfit}
 @app.post("/run-backtest")
 async def run_backtest(req: RunBacktestRequest):
     # 1. OHLCV 데이터 로드
-    print(f"백테스트 요청: {req.start_date} ~ {req.end_date}")
-    df = fetch_btcusdt_ohlcv(req.start_date, req.end_date)
+    print(f"백테스트 요청: {req.start_date} ~ {req.end_date}, 시간 간격: {req.timeframe}")
+    df = fetch_btcusdt_ohlcv(req.start_date, req.end_date, timeframe=req.timeframe)
     if df.empty:
         raise HTTPException(status_code=404, detail="데이터 없음")
     
