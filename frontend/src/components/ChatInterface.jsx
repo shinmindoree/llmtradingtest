@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
 import '../styles/ChatInterface.css';
+import ResultChart from './ResultChart';
 
 const ChatInterface = ({ onBacktestStart }) => {
   const [messages, setMessages] = useState([
@@ -39,7 +39,6 @@ const ChatInterface = ({ onBacktestStart }) => {
   
   const [showParameters, setShowParameters] = useState(false);
   const messagesEndRef = useRef(null);
-  const navigate = useNavigate();
 
   // 새 메시지가 추가될 때마다 스크롤 아래로 이동
   useEffect(() => {
@@ -48,6 +47,78 @@ const ChatInterface = ({ onBacktestStart }) => {
 
   // 타이핑 효과 구현
   useEffect(() => {
+    // 코드 타이핑 효과 내부 함수
+    const startCodeTypingInner = () => {
+      if (!typingCode) {
+        setIsCodeTyping(false);
+        setIsTyping(false);
+        
+        // 타이핑이 완료된 메시지로 업데이트
+        if (currentTypingMessageId !== null) {
+          setMessages(prevMessages => 
+            prevMessages.map(msg => 
+              msg.id === currentTypingMessageId 
+                ? { 
+                    ...msg, 
+                    content: fullContent, 
+                    code: currentCode, 
+                    isTyping: false,
+                    typingCode: false
+                  } 
+                : msg
+            )
+          );
+          setCurrentTypingMessageId(null);
+        }
+        return;
+      }
+      
+      // 일정 시간마다 코드의 일부를 표시
+      const codeLength = typingCode.length;
+      const charsPerFrame = 10; // 한 번에 표시할 문자 수
+      let displayedChars = 0;
+      
+      const codeTypingInterval = setInterval(() => {
+        if (displayedChars < codeLength) {
+          displayedChars = Math.min(displayedChars + charsPerFrame, codeLength);
+          
+          setMessages(prevMessages => 
+            prevMessages.map(msg => 
+              msg.id === currentTypingMessageId 
+                ? { 
+                    ...msg, 
+                    code: typingCode.slice(0, displayedChars),
+                    typingCode: true
+                  } 
+                : msg
+            )
+          );
+        } else {
+          clearInterval(codeTypingInterval);
+          setIsCodeTyping(false);
+          setIsTyping(false);
+          
+          // 타이핑이 완료된 메시지로 업데이트
+          setMessages(prevMessages => 
+            prevMessages.map(msg => 
+              msg.id === currentTypingMessageId 
+                ? { 
+                    ...msg, 
+                    content: fullContent, 
+                    code: typingCode, 
+                    isTyping: false,
+                    typingCode: false
+                  } 
+                : msg
+            )
+          );
+          setCurrentTypingMessageId(null);
+        }
+      }, 30); // 코드 타이핑 속도
+      
+      return () => clearInterval(codeTypingInterval);
+    };
+
     if (isTyping && currentIndex < fullContent.length) {
       const typingTimer = setTimeout(() => {
         setDisplayedContent(prev => prev + fullContent.charAt(currentIndex));
@@ -58,7 +129,7 @@ const ChatInterface = ({ onBacktestStart }) => {
     } else if (isTyping && currentIndex >= fullContent.length) {
       // 텍스트 타이핑 완료 후 코드 타이핑 시작
       if (isCodeTyping) {
-        startCodeTyping();
+        startCodeTypingInner();
       } else {
         setIsTyping(false);
         
@@ -75,79 +146,7 @@ const ChatInterface = ({ onBacktestStart }) => {
         }
       }
     }
-  }, [isTyping, currentIndex, fullContent]);
-
-  // 코드 타이핑 효과 구현
-  const startCodeTyping = () => {
-    if (!typingCode) {
-      setIsCodeTyping(false);
-      setIsTyping(false);
-      
-      // 타이핑이 완료된 메시지로 업데이트
-      if (currentTypingMessageId !== null) {
-        setMessages(prevMessages => 
-          prevMessages.map(msg => 
-            msg.id === currentTypingMessageId 
-              ? { 
-                  ...msg, 
-                  content: fullContent, 
-                  code: currentCode, 
-                  isTyping: false,
-                  typingCode: false
-                } 
-              : msg
-          )
-        );
-        setCurrentTypingMessageId(null);
-      }
-      return;
-    }
-    
-    // 일정 시간마다 코드의 일부를 표시
-    const codeLength = typingCode.length;
-    const charsPerFrame = 10; // 한 번에 표시할 문자 수
-    let displayedChars = 0;
-    
-    const codeTypingInterval = setInterval(() => {
-      if (displayedChars < codeLength) {
-        displayedChars = Math.min(displayedChars + charsPerFrame, codeLength);
-        
-        setMessages(prevMessages => 
-          prevMessages.map(msg => 
-            msg.id === currentTypingMessageId 
-              ? { 
-                  ...msg, 
-                  code: typingCode.slice(0, displayedChars),
-                  typingCode: true
-                } 
-              : msg
-          )
-        );
-      } else {
-        clearInterval(codeTypingInterval);
-        setIsCodeTyping(false);
-        setIsTyping(false);
-        
-        // 타이핑이 완료된 메시지로 업데이트
-        setMessages(prevMessages => 
-          prevMessages.map(msg => 
-            msg.id === currentTypingMessageId 
-              ? { 
-                  ...msg, 
-                  content: fullContent, 
-                  code: typingCode, 
-                  isTyping: false,
-                  typingCode: false
-                } 
-              : msg
-          )
-        );
-        setCurrentTypingMessageId(null);
-      }
-    }, 30); // 코드 타이핑 속도
-    
-    return () => clearInterval(codeTypingInterval);
-  };
+  }, [isTyping, currentIndex, fullContent, currentTypingMessageId, isCodeTyping, typingCode, currentCode]);
 
   // 타이핑 효과 시작
   const startTypingEffect = (content, code = null) => {
@@ -294,29 +293,13 @@ const ChatInterface = ({ onBacktestStart }) => {
       const backtestMessage = {
         id: messages.length + 1,
         type: 'assistant',
-        content: '백테스트를 실행합니다. 결과 페이지로 이동합니다...',
+        content: '백테스트 실행 결과입니다.',
+        backtestResult: result,
         timestamp: new Date()
       };
       
       setMessages(prev => [...prev, backtestMessage]);
-      
-      // 잠시 후 결과 페이지로 이동
-      setTimeout(() => {
-        navigate('/result', {
-          state: {
-            strategy: messages.find(msg => msg.type === 'user')?.content || '사용자 정의 전략',
-            capital: parameters.capital,
-            capitalPct: parameters.capital_pct,
-            stopLoss: parameters.stopLoss,
-            takeProfit: parameters.takeProfit,
-            startDate: parameters.startDate,
-            endDate: parameters.endDate,
-            commission: parameters.commission,
-            code: currentCode,
-            backtestResult: result,
-          },
-        });
-      }, 1500);
+      setIsLoading(false);
       
     } catch (error) {
       // 에러 메시지 추가 (타이핑 효과와 함께)
@@ -472,6 +455,32 @@ const ChatInterface = ({ onBacktestStart }) => {
                       {message.typingCode && <span className="code-cursor">|</span>}
                     </code>
                   </pre>
+                </div>
+              )}
+              
+              {message.backtestResult && (
+                <div className="backtest-result">
+                  <div className="result-header">
+                    <h3>백테스트 결과</h3>
+                  </div>
+                  <div className="performance-metrics">
+                    <h4>주요 성과 지표</h4>
+                    <ul>
+                      <li><b>총 수익률:</b> {message.backtestResult.total_return ? `${message.backtestResult.total_return}%` : '-'}</li>
+                      <li><b>최대 낙폭:</b> {message.backtestResult.max_drawdown || '-'}</li>
+                      <li><b>트레이드 수:</b> {message.backtestResult.num_trades || '-'}</li>
+                      <li><b>승률:</b> {message.backtestResult.win_rate ? `${message.backtestResult.win_rate}%` : '-'}</li>
+                      <li><b>수익/손실 비율:</b> {message.backtestResult.profit_loss_ratio || '-'}</li>
+                    </ul>
+                  </div>
+                  {message.backtestResult.equity_curve && (
+                    <div className="result-chart">
+                      <ResultChart data={{
+                        labels: message.backtestResult.equity_curve.timestamps || message.backtestResult.equity_curve.labels || [],
+                        values: message.backtestResult.equity_curve.values || []
+                      }} />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
