@@ -4,7 +4,8 @@ from pydantic import BaseModel
 import openai
 import os
 from dotenv import load_dotenv
-from app.routers import backtest, strategy, debug
+from app.routers import backtest, strategy
+from app.api.endpoints import debug  # debug.py 경로를 app.api.endpoints에서 가져오도록 수정
 from app.services.data_service import fetch_btcusdt_ohlcv
 import pandas as pd
 import backtrader as bt
@@ -27,7 +28,7 @@ app.add_middleware(
 # 라우터 등록
 app.include_router(backtest.router)
 app.include_router(strategy.router)
-app.include_router(debug.router)
+app.include_router(debug.router, prefix="/debug")  # debug 라우터를 /debug 경로로 등록
 
 class StrategyRequest(BaseModel):
     strategy: str

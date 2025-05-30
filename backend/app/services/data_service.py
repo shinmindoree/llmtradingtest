@@ -54,8 +54,8 @@ def save_to_supabase(df, symbol="BTCUSDT", interval="15m", batch_size=1000):
 def delete_all_from_supabase():
     supabase.table("binance_ohlcv").delete().neq("id", -1).execute()
 
-def fetch_btcusdt_ohlcv(start_date: str, end_date: str, max_data_points=10000):
-    print(f"Binance API에서 {start_date}~{end_date} 데이터 가져오기 시작 (최대 {max_data_points}개)")
+def fetch_btcusdt_ohlcv(start_date: str, end_date: str, max_data_points=10000, timeframe="15m"):
+    print(f"Binance API에서 {start_date}~{end_date} 데이터 가져오기 시작 (최대 {max_data_points}개, 시간 간격: {timeframe})")
     
     # 날짜를 밀리초 타임스탬프로 변환
     start_ts = pd.to_datetime(start_date).timestamp() * 1000
@@ -69,6 +69,24 @@ def fetch_btcusdt_ohlcv(start_date: str, end_date: str, max_data_points=10000):
     current_ts = start_ts
     api_calls = 0
     
+    # 시간 간격 값을 밀리초로 변환하는 함수
+    def get_timeframe_ms(tf):
+        unit = tf[-1]
+        value = int(tf[:-1]) if tf[:-1].isdigit() else 1
+        
+        if unit == 'm':
+            return value * 60 * 1000
+        elif unit == 'h':
+            return value * 60 * 60 * 1000
+        elif unit == 'd':
+            return value * 24 * 60 * 60 * 1000
+        elif unit == 'w':
+            return value * 7 * 24 * 60 * 60 * 1000
+        return 15 * 60 * 1000  # 기본값: 15분
+    
+    # 시간 간격(밀리초)
+    timeframe_ms = get_timeframe_ms(timeframe)
+    
     # API 호출 횟수와 데이터 포인트 수를 모두 제한
     while current_ts < end_ts and len(all_ohlcv) < max_data_points and api_calls < 20:
         try:
@@ -78,7 +96,7 @@ def fetch_btcusdt_ohlcv(start_date: str, end_date: str, max_data_points=10000):
             # API 호출
             ohlcv = exchange.fetch_ohlcv(
                 symbol="BTC/USDT:USDT", 
-                timeframe="15m", 
+                timeframe=timeframe, 
                 since=int(current_ts), 
                 limit=1000
             )
@@ -127,7 +145,7 @@ def fetch_btcusdt_ohlcv(start_date: str, end_date: str, max_data_points=10000):
         for col in ["open", "high", "low", "close", "volume"]:
             df[col] = df[col].astype(float)
         
-        print(f"Binance API에서 총 {len(df)}개 데이터를 가져왔습니다 (API 호출 횟수: {api_calls}).")
+        print(f"Binance API에서 총 {len(df)}개 데이터를 가져왔습니다 (API 호출 횟수: {api_calls}, 시간 간격: {timeframe}).")
     else:
         print("Binance API에서 데이터를 가져올 수 없습니다.")
         df = pd.DataFrame(columns=["timestamp", "open", "high", "low", "close", "volume"])

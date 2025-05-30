@@ -18,6 +18,9 @@ const DebugPage = () => {
   const [rowsPerPage, setRowsPerPage] = useState(100);
   const [sortField, setSortField] = useState('timestamp');
   const [sortDirection, setSortDirection] = useState('asc');
+  
+  // 캔들 시간 간격 상태 추가
+  const [timeframe, setTimeframe] = useState('15m');
 
   const fetchData = async () => {
     setLoading(true);
@@ -29,10 +32,11 @@ const DebugPage = () => {
     });
     
     try {
-      const response = await axios.post('http://127.0.0.1:8000/debug/fetch-data', {
+      const response = await axios.post('http://127.0.0.1:8001/debug/fetch-data', {
         start_date: startDate,
         end_date: endDate,
-        max_data_points: maxDataPoints
+        max_data_points: maxDataPoints,
+        timeframe: timeframe // 캔들 시간 간격 파라미터 추가
       });
       
       if (response.data && response.data.data) {
@@ -111,6 +115,7 @@ const DebugPage = () => {
             noChangeCount,
             maxConsecutiveUp,
             maxConsecutiveDown,
+            timeframe: timeframe, // 캔들 시간 간격 추가
             dateRange: `${new Date(ohlcData[0].timestamp).toLocaleDateString()} ~ ${new Date(ohlcData[ohlcData.length-1].timestamp).toLocaleDateString()}`
           });
         }
@@ -293,6 +298,29 @@ const DebugPage = () => {
             </select>
           </div>
           
+          <div className="input-group">
+            <label>캔들 시간 간격:</label>
+            <select 
+              value={timeframe} 
+              onChange={(e) => setTimeframe(e.target.value)}
+            >
+              <option value="1m">1분</option>
+              <option value="3m">3분</option>
+              <option value="5m">5분</option>
+              <option value="15m">15분</option>
+              <option value="30m">30분</option>
+              <option value="1h">1시간</option>
+              <option value="2h">2시간</option>
+              <option value="4h">4시간</option>
+              <option value="6h">6시간</option>
+              <option value="8h">8시간</option>
+              <option value="12h">12시간</option>
+              <option value="1d">1일</option>
+              <option value="3d">3일</option>
+              <option value="1w">1주</option>
+            </select>
+          </div>
+          
           <button 
             className="fetch-btn"
             onClick={fetchData}
@@ -348,6 +376,10 @@ const DebugPage = () => {
             <div className="stat-item">
               <span className="stat-label">날짜 범위:</span>
               <span className="stat-value">{stats.dateRange}</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-label">캔들 시간 간격:</span>
+              <span className="stat-value">{stats.timeframe}</span>
             </div>
             <div className="stat-item">
               <span className="stat-label">시작 가격:</span>
