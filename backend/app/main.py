@@ -4,7 +4,7 @@ from pydantic import BaseModel
 import openai
 import os
 from dotenv import load_dotenv
-from app.routers import backtest, strategy
+from app.routers import backtest, strategy, debug
 from app.services.data_service import fetch_btcusdt_ohlcv
 import pandas as pd
 import backtrader as bt
@@ -27,6 +27,7 @@ app.add_middleware(
 # 라우터 등록
 app.include_router(backtest.router)
 app.include_router(strategy.router)
+app.include_router(debug.router)
 
 class StrategyRequest(BaseModel):
     strategy: str
@@ -122,14 +123,21 @@ Take Profit: {req.takeProfit}
 @app.post("/run-backtest")
 async def run_backtest(req: RunBacktestRequest):
     # 1. OHLCV 데이터 로드
+    print(f"백테스트 요청: {req.start_date} ~ {req.end_date}")
     df = fetch_btcusdt_ohlcv(req.start_date, req.end_date)
     if df.empty:
         raise HTTPException(status_code=404, detail="데이터 없음")
+    
+    print(f"데이터 로드 완료: {len(df)}개 레코드")
+    print(f"데이터 범위: {df['timestamp'].min()} ~ {df['timestamp'].max()}")
+    
     df["datetime"] = pd.to_datetime(df["timestamp"])
     df.set_index("datetime", inplace=True)
+    
     # 2. LLM이 반환한 Strategy 코드 등록
     local_vars = {}
     try:
+        print("Strategy 코드 실행 중...")
         exec(req.code, globals(), local_vars)
         StrategyClass = None
         for v in local_vars.values():
@@ -138,8 +146,11 @@ async def run_backtest(req: RunBacktestRequest):
                 break
         if StrategyClass is None:
             raise Exception("Strategy 클래스가 올바르게 정의되지 않음")
+        print("Strategy 클래스 로드 성공")
     except Exception as e:
+        print(f"코드 실행 오류: {e}")
         raise HTTPException(status_code=400, detail=f"코드 실행 오류: {e}")
+    
     # 3. 백테스트 실행
     cerebro = bt.Cerebro()
     data = bt.feeds.PandasData(dataname=df)
@@ -156,8 +167,11 @@ async def run_backtest(req: RunBacktestRequest):
     cerebro.addanalyzer(bt.analyzers.DrawDown, _name='drawdown')
     cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name='trades')
     cerebro.addanalyzer(bt.analyzers.TimeReturn, _name='timereturn')
+    
+    print("백테스트 실행 중...")
     results = cerebro.run()
     strat = results[0]
+    
     # 4. 결과 추출
     timereturn = strat.analyzers.timereturn.get_analysis()
     equity_curve = [req.capital]
@@ -166,8 +180,13 @@ async def run_backtest(req: RunBacktestRequest):
         equity_curve.append(equity_curve[-1] * (1 + ret))
         labels.append(str(dt.date()))
     equity_curve = equity_curve[1:]
+    
     drawdown = strat.analyzers.drawdown.get_analysis()
     trades = strat.analyzers.trades.get_analysis()
+    
+    # 디버깅을 위한 거래 분석 데이터 출력
+    print(f"거래 분석 데이터: {trades}")
+    
     # 항상 숫자만 반환 (dict일 경우 total, 아닐 경우 0)
     max_drawdown = 0.0
     if isinstance(drawdown, dict):
@@ -177,8 +196,16 @@ async def run_backtest(req: RunBacktestRequest):
             max_drawdown = float(drawdown)
         except Exception:
             max_drawdown = 0.0
+    
     num_trades = 0
+    win_rate = 0
+    profit_loss_ratio = 0
+    
+    # 실제 거래 내역 추출
+    trade_history = []
+    
     if isinstance(trades, dict):
+        # 거래 수 계산
         total = trades.get('total', 0)
         if isinstance(total, (int, float)):
             num_trades = int(total)
@@ -187,12 +214,48 @@ async def run_backtest(req: RunBacktestRequest):
             num_trades = int(total.get('total', 0))
         else:
             num_trades = 0
+        
+        # 승률 계산
+        if num_trades > 0 and 'won' in trades:
+            won = trades.get('won', {})
+            if isinstance(won, dict):
+                won_count = won.get('total', 0)
+            else:
+                won_count = won
+            
+            win_rate = round((won_count / num_trades) * 100, 2)
+        
+        # 수익/손실 비율 계산
+        if 'pnl' in trades:
+            pnl = trades.get('pnl', {})
+            gross_profit = pnl.get('gross', {}).get('won', 0)
+            gross_loss = abs(pnl.get('gross', {}).get('lost', 0))
+            
+            if gross_loss > 0:
+                profit_loss_ratio = round(gross_profit / gross_loss, 2)
+        
+        # 거래 내역 추출 시도
+        closed_trades = trades.get('closed', [])
+        if isinstance(closed_trades, list) and closed_trades:
+            for trade in closed_trades:
+                trade_history.append({
+                    'entry_date': str(trade.get('entry_date', '')),
+                    'exit_date': str(trade.get('exit_date', '')),
+                    'entry_price': trade.get('price_in', 0),
+                    'exit_price': trade.get('price_out', 0),
+                    'pnl': trade.get('pnl', 0),
+                    'pnl_pct': trade.get('pnl_pct', 0)
+                })
     else:
         try:
             num_trades = int(trades)
         except Exception:
             num_trades = 0
+    
+    print(f"백테스트 완료: {num_trades}개 거래, 승률: {win_rate}%, 손익비: {profit_loss_ratio}")
+    
     total_return = round((equity_curve[-1] - req.capital) / req.capital * 100, 2)
+    
     return {
         "equity_curve": {
             "labels": labels,
@@ -200,7 +263,10 @@ async def run_backtest(req: RunBacktestRequest):
         },
         "total_return": total_return,
         "max_drawdown": max_drawdown,
-        "num_trades": num_trades
+        "num_trades": num_trades,
+        "win_rate": win_rate,
+        "profit_loss_ratio": profit_loss_ratio,
+        "trade_history": trade_history
     } 
     
     

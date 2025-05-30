@@ -54,8 +54,8 @@ def save_to_supabase(df, symbol="BTCUSDT", interval="15m", batch_size=1000):
 def delete_all_from_supabase():
     supabase.table("binance_ohlcv").delete().neq("id", -1).execute()
 
-def fetch_btcusdt_ohlcv(start_date: str, end_date: str, max_data_points=10000):
-    print(f"Binance API에서 {start_date}~{end_date} 데이터 가져오기 시작 (최대 {max_data_points}개)")
+def fetch_btcusdt_ohlcv(start_date: str, end_date: str):
+    print(f"Binance API에서 {start_date}~{end_date} 데이터를 가져옵니다.")
     
     # 날짜를 밀리초 타임스탬프로 변환
     start_ts = pd.to_datetime(start_date).timestamp() * 1000
@@ -64,18 +64,12 @@ def fetch_btcusdt_ohlcv(start_date: str, end_date: str, max_data_points=10000):
     # Binance에서 데이터 직접 가져오기
     exchange = ccxt.binance({'options': {'defaultType': 'future'}})
     
-    # 데이터 저장 리스트
+    # 최대 1000개씩 가져와서 합치기
     all_ohlcv = []
     current_ts = start_ts
-    api_calls = 0
     
-    # API 호출 횟수와 데이터 포인트 수를 모두 제한
-    while current_ts < end_ts and len(all_ohlcv) < max_data_points and api_calls < 20:
+    while current_ts < end_ts:
         try:
-            # 호출 횟수 증가
-            api_calls += 1
-            
-            # API 호출
             ohlcv = exchange.fetch_ohlcv(
                 symbol="BTC/USDT:USDT", 
                 timeframe="15m", 
@@ -84,31 +78,17 @@ def fetch_btcusdt_ohlcv(start_date: str, end_date: str, max_data_points=10000):
             )
             
             if not ohlcv:
-                print(f"더 이상 데이터가 없습니다. (API 호출 횟수: {api_calls})")
                 break
-            
-            # 진행 상황 로그
-            print(f"API 호출 {api_calls}: {len(ohlcv)}개 데이터 가져옴 (시작: {pd.to_datetime(ohlcv[0][0], unit='ms')}, 종료: {pd.to_datetime(ohlcv[-1][0], unit='ms')})")
-            
-            # 중복 데이터 방지
-            if all_ohlcv and ohlcv[0][0] == all_ohlcv[-1][0]:
-                all_ohlcv.extend(ohlcv[1:])
-            else:
-                all_ohlcv.extend(ohlcv)
+                
+            all_ohlcv.extend(ohlcv)
             
             # 마지막 데이터 시간 + 1ms를 다음 시작점으로
             current_ts = ohlcv[-1][0] + 1
             
             # 가져온 마지막 데이터가 종료 시간을 넘었으면 중단
             if current_ts > end_ts:
-                print(f"종료 시간에 도달했습니다: {pd.to_datetime(current_ts, unit='ms')} > {pd.to_datetime(end_ts, unit='ms')}")
                 break
-            
-            # 최대 데이터 포인트에 도달하면 중단
-            if len(all_ohlcv) >= max_data_points:
-                print(f"최대 데이터 포인트 수({max_data_points})에 도달했습니다.")
-                break
-            
+                
             # API 속도 제한 방지
             time.sleep(0.5)
             
@@ -117,6 +97,7 @@ def fetch_btcusdt_ohlcv(start_date: str, end_date: str, max_data_points=10000):
             break
     
     # 데이터프레임으로 변환
+    df = pd.DataFrame()
     if all_ohlcv:
         df = pd.DataFrame(all_ohlcv, columns=["timestamp", "open", "high", "low", "close", "volume"])
         df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
@@ -126,16 +107,17 @@ def fetch_btcusdt_ohlcv(start_date: str, end_date: str, max_data_points=10000):
         
         for col in ["open", "high", "low", "close", "volume"]:
             df[col] = df[col].astype(float)
+            
+        print(f"Binance API에서 {len(df)}개 데이터를 가져왔습니다.")
         
-        print(f"Binance API에서 총 {len(df)}개 데이터를 가져왔습니다 (API 호출 횟수: {api_calls}).")
+        # 선택적으로 Supabase에 데이터 저장 (캐싱)
+        try:
+            save_to_supabase(df)
+            print("데이터를 Supabase에 저장했습니다.")
+        except Exception as e:
+            print(f"Supabase 저장 오류: {e}")
     else:
         print("Binance API에서 데이터를 가져올 수 없습니다.")
-        df = pd.DataFrame(columns=["timestamp", "open", "high", "low", "close", "volume"])
-    
-    # 데이터가 너무 많으면 최대 데이터 포인트로 제한
-    if len(df) > max_data_points:
-        print(f"데이터가 너무 많아 {max_data_points}개로 제한합니다. (원래: {len(df)}개)")
-        df = df.head(max_data_points)
     
     return df
 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import OpenAITest from '../components/OpenAITest';
 import BTCChart from '../components/BTCUSDTChart';
 import ChatInterface from '../components/ChatInterface';
@@ -13,6 +14,7 @@ const HomePage = () => {
         <div className="logo">LLMTrading</div>
         <div style={{ flex: 1 }}></div>
         <div className="user-menu">
+          <Link to="/debug" className="toolbar-button debug-button">디버그</Link>
           <button className="toolbar-button">도움말</button>
         </div>
       </header>

@@ -38,6 +38,13 @@
   padding: 15px;
   background-color: var(--panel-bg);
   border-top: 1px solid var(--border-color);
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+}
+
+.parameters-form.show {
+  max-height: 500px;
 }
 
 /* 메시지 컨테이너 */
@@ -406,4 +413,100 @@
 .message.assistant .backtest-result {
   width: 150%;
   max-width: 600px;
+}
+
+/* 트레이딩 내역 스타일 */
+.trade-history {
+  padding: 15px;
+  border-top: 1px solid var(--border-color);
+}
+
+.trade-history h4 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+  color: var(--muted-text);
+}
+
+.trade-table-container {
+  overflow-x: auto;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.trade-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.trade-table th {
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 8px 12px;
+  text-align: left;
+  color: var(--muted-text);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.trade-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.trade-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.trade-table tr.buy-trade {
+  background-color: rgba(38, 166, 154, 0.05);
+}
+
+.trade-table tr.sell-trade {
+  background-color: rgba(239, 83, 80, 0.05);
+}
+
+.positive-return {
+  color: #26a69a;
+}
+
+.negative-return {
+  color: #ef5350;
+}
+
+/* 프리셋 날짜 버튼 스타일 */
+.preset-dates {
+  margin-top: 15px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color);
+}
+
+.preset-dates label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  color: var(--muted-text);
+}
+
+.preset-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.preset-buttons button {
+  background-color: var(--primary-bg);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.preset-buttons button:hover {
+  background-color: var(--accent-color);
+  color: white;
+  border-color: var(--accent-color);
 } 
