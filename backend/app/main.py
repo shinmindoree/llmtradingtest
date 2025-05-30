@@ -11,7 +11,8 @@ import pandas as pd
 import backtrader as bt
 import re
 
-env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
+# 루트 디렉토리의 .env 파일 경로로 수정
+env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env')
 load_dotenv(dotenv_path=env_path)
 
 app = FastAPI()

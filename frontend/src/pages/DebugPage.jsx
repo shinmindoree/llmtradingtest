@@ -32,7 +32,7 @@ const DebugPage = () => {
     });
     
     try {
-      const response = await axios.post('http://127.0.0.1:8001/debug/fetch-data', {
+      const response = await axios.post('http://127.0.0.1:8000/debug/fetch-data', {
         start_date: startDate,
         end_date: endDate,
         max_data_points: maxDataPoints,
