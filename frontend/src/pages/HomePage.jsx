@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import InputForm from '../components/InputForm';
-import StrategyPrompt from '../components/StrategyPrompt';
 import OpenAITest from '../components/OpenAITest';
 import BTCChart from '../components/BTCUSDTChart';
+import ChatInterface from '../components/ChatInterface';
 import '../styles/HomePage.css';
 
 const HomePage = () => {
@@ -58,13 +57,12 @@ const HomePage = () => {
             </div>
           </div>
           
-          <div className="strategy-section">
+          <div className="chat-section">
             <div className="panel-header">
-              <h3 className="panel-title">AI 트레이딩 전략 생성기</h3>
+              <h3 className="panel-title">AI 트레이딩 어시스턴트</h3>
             </div>
             <div className="panel-content">
-              <StrategyPrompt />
-              <InputForm />
+              <ChatInterface />
             </div>
           </div>
         </div>
