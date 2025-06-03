@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import OpenAITest from '../components/OpenAITest';
-import BTCChart from '../components/BTCUSDTChart';
+import BTCUSDTChart from '../components/BTCUSDTChart';
 import ChatInterface from '../components/ChatInterface';
 import '../styles/HomePage.css';
 
@@ -55,7 +55,7 @@ const HomePage = () => {
               </div>
             </div>
             <div className="chart-content">
-              <BTCChart />
+              <BTCUSDTChart timeframe={timeframe} />
             </div>
           </div>
           
@@ -64,7 +64,7 @@ const HomePage = () => {
               <h3 className="panel-title">AI 트레이딩 어시스턴트</h3>
             </div>
             <div className="panel-content">
-              <ChatInterface />
+              <ChatInterface timeframe={timeframe} />
             </div>
           </div>
         </div>

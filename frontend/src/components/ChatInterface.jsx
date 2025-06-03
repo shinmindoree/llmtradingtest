@@ -3,7 +3,7 @@ import axios from 'axios';
 import '../styles/ChatInterface.css';
 import ResultChart from './ResultChart';
 
-const ChatInterface = ({ onBacktestStart }) => {
+const ChatInterface = ({ onBacktestStart, timeframe = '1h' }) => {
   const [messages, setMessages] = useState([
     {
       id: 1,
@@ -21,13 +21,21 @@ const ChatInterface = ({ onBacktestStart }) => {
   const [parameters, setParameters] = useState({
     capital: 10000,
     capital_pct: 0.3,
-    stopLoss: 2,
-    takeProfit: 5,
-    startDate: '2024-01-01',
-    endDate: '2024-01-10',
+    stopLoss: 1,
+    takeProfit: 1,
+    startDate: '2024-05-01',
+    endDate: '2025-05-31',
     commission: 0.0004,
-    timeframe: '15m'
+    timeframe: timeframe
   });
+  
+  // timeframe 변경시 parameters 업데이트
+  useEffect(() => {
+    setParameters(prev => ({
+      ...prev,
+      timeframe: timeframe
+    }));
+  }, [timeframe]);
   
   // Binance API 데이터 표시를 위한 상태 추가
   const [priceData, setPriceData] = useState([]);

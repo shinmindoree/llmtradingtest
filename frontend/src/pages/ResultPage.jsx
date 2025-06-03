@@ -14,6 +14,9 @@ const ResultPage = () => {
     return null;
   }
 
+  // 백테스트에 사용된 타임프레임 또는 기본값
+  const timeframe = data.timeframe || '1h';
+
   // 실제 백테스트 결과 데이터
   const backtest = data.backtestResult;
   const chartData = backtest && backtest.equity_curve
@@ -25,7 +28,7 @@ const ResultPage = () => {
 
   return (
     <div>
-      <BTCUSDTChart />
+      <BTCUSDTChart timeframe={timeframe} />
       <h1>백테스트 결과</h1>
       <div style={{marginBottom: '2rem'}}>
         <h3>입력한 전략 정보</h3>
@@ -34,6 +37,7 @@ const ResultPage = () => {
           <li><b>자본금:</b> {data.capital}</li>
           <li><b>Stop Loss:</b> {data.stopLoss}%</li>
           <li><b>Take Profit:</b> {data.takeProfit}%</li>
+          <li><b>타임프레임:</b> {timeframe}</li>
         </ul>
       </div>
       {data.code && (
