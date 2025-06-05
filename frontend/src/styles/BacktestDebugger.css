@@ -1,0 +1,131 @@
+.backtest-debugger {
+  margin-top: 20px;
+  border: 1px solid #2a2d3a;
+  border-radius: 4px;
+  background-color: #1a1c25;
+  overflow: hidden;
+}
+
+.debugger-header {
+  padding: 12px 16px;
+  background-color: #2a2d3a;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.debugger-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #fff;
+}
+
+.debugger-tabs {
+  display: flex;
+}
+
+.tab-button {
+  background: none;
+  border: none;
+  padding: 6px 12px;
+  margin-left: 4px;
+  color: #8c8c8c;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.tab-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.tab-button.active {
+  background-color: #4863f7;
+  color: #fff;
+}
+
+.debugger-content {
+  padding: 16px;
+}
+
+.debugger-content.empty {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 120px;
+  color: #8c8c8c;
+}
+
+.debug-tab h4 {
+  margin-top: 0;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: #c1c9d2;
+}
+
+.debug-info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.info-item {
+  background-color: #252836;
+  border-radius: 4px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.info-item.full-width {
+  grid-column: span 3;
+}
+
+.info-item.attention {
+  grid-column: span 3;
+  background-color: rgba(255, 175, 0, 0.1);
+  border-left: 3px solid #ffaf00;
+}
+
+.info-label {
+  font-size: 12px;
+  color: #8c8c8c;
+  margin-bottom: 4px;
+}
+
+.info-value {
+  font-size: 14px;
+  color: #fff;
+}
+
+.info-value.positive {
+  color: #00c48c;
+}
+
+.info-value.negative {
+  color: #ff5252;
+}
+
+.params-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.params-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid #3a3c4a;
+}
+
+.params-table tr:last-child td {
+  border-bottom: none;
+}
+
+.params-table td:first-child {
+  font-weight: bold;
+  color: #8c8c8c;
+  width: 40%;
+}
+
+.params-table td:last-child {
+  color: #fff;
+} 

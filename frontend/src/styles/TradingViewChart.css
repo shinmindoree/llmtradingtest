@@ -1,0 +1,74 @@
+.tradingview-chart-container {
+  width: 100%;
+  height: 700px;
+  position: relative;
+  background-color: #1E1E1E;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  margin: 20px 0;
+}
+
+.chart-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  color: #CCCCCC;
+  font-size: 18px;
+  background-color: #1E1E1E;
+}
+
+/* 반응형 스타일 */
+@media (max-width: 768px) {
+  .tradingview-chart-container {
+    height: 500px;
+  }
+}
+
+/* 모드바 스타일 */
+.js-plotly-plot .plotly .modebar {
+  background-color: rgba(30, 30, 30, 0.8) !important;
+}
+
+.js-plotly-plot .plotly .modebar-btn path {
+  fill: #CCCCCC !important;
+}
+
+.js-plotly-plot .plotly .modebar-btn.active path,
+.js-plotly-plot .plotly .modebar-btn:hover path {
+  fill: #4CAF50 !important;
+}
+
+/* 툴팁 스타일 */
+.js-plotly-plot .plotly .hovertext {
+  background-color: #333333 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #555555 !important;
+  border-radius: 4px !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3) !important;
+  padding: 8px !important;
+  font-family: 'Roboto', sans-serif !important;
+}
+
+/* 레인지 셀렉터 버튼 */
+.js-plotly-plot .plotly .rangeslider-container {
+  background-color: #333333 !important;
+}
+
+.js-plotly-plot .plotly .range-slider {
+  border: 1px solid #555555 !important;
+}
+
+/* 캔들스틱 위 마우스 오버 시 십자선 */
+.js-plotly-plot .plotly .hoverlayer .hoverline {
+  stroke: #777777 !important;
+  stroke-width: 1px !important;
+}
+
+/* 차트 줌 영역 */
+.js-plotly-plot .plotly .zoomlayer > .drag {
+  fill: rgba(76, 175, 80, 0.1) !important;
+  stroke: #4CAF50 !important;
+} 
