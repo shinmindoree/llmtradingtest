@@ -3,13 +3,9 @@ import os
 import ccxt
 import pandas as pd
 import time
-from supabase import create_client, Client
 
 # 환경변수 로드
 load_dotenv()
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def fetch_binance_futures_ohlcv(symbol="BTC/USDT:USDT", timeframe="15m", limit=10000):
     exchange = ccxt.binance({'options': {'defaultType': 'future'}})
@@ -30,29 +26,6 @@ def fetch_binance_futures_ohlcv(symbol="BTC/USDT:USDT", timeframe="15m", limit=1
     for col in ["open", "high", "low", "close", "volume"]:
         df[col] = df[col].astype(float)
     return df.tail(limit).reset_index(drop=True)
-
-def save_to_supabase(df, symbol="BTCUSDT", interval="15m", batch_size=1000):
-    rows = []
-    for _, row in df.iterrows():
-        data = {
-            "symbol": symbol,
-            "interval": interval,
-            "timestamp": row["timestamp"].isoformat(),
-            "open": row["open"],
-            "high": row["high"],
-            "low": row["low"],
-            "close": row["close"],
-            "volume": row["volume"]
-        }
-        rows.append(data)
-        if len(rows) >= batch_size:
-            supabase.table("binance_ohlcv").insert(rows).execute()
-            rows = []
-    if rows:
-        supabase.table("binance_ohlcv").insert(rows).execute()
-
-def delete_all_from_supabase():
-    supabase.table("binance_ohlcv").delete().neq("id", -1).execute()
 
 def fetch_btcusdt_ohlcv(start_date: str, end_date: str, max_data_points=10000, timeframe="15m"):
     print(f"Binance API에서 {start_date}~{end_date} 데이터 가져오기 시작 (최대 {max_data_points}개, 시간 간격: {timeframe})")
@@ -158,7 +131,5 @@ def fetch_btcusdt_ohlcv(start_date: str, end_date: str, max_data_points=10000, t
     return df
 
 if __name__ == "__main__":
-    delete_all_from_supabase()
     df = fetch_binance_futures_ohlcv()
-    print(df.head())
-    save_to_supabase(df) 
+    print(df.head()) 

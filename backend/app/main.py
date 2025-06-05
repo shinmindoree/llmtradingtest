@@ -1,15 +1,17 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing import Dict, Any, List, Optional
 import openai
 import os
+import re
 from dotenv import load_dotenv
-from app.routers import backtest, strategy
-from app.api.endpoints import debug  # debug.py 경로를 app.api.endpoints에서 가져오도록 수정
 from app.services.data_service import fetch_btcusdt_ohlcv
 import pandas as pd
 import backtrader as bt
-import re
+import logging
+import io
+from contextlib import redirect_stdout
 
 # 루트 디렉토리의 .env 파일 경로로 수정
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env')
@@ -26,20 +28,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 라우터 등록
-app.include_router(backtest.router)
-app.include_router(strategy.router)
-app.include_router(debug.router, prefix="/debug")  # debug 라우터를 /debug 경로로 등록
-
+# 모델 정의
 class StrategyRequest(BaseModel):
-    strategy: str
-    capital: float
-    capital_pct: float
-    stopLoss: float
-    takeProfit: float
-    startDate: str
-    endDate: str
-    commission: float
+    strategy: str = Field(..., description="트레이딩 전략 설명")
+    capital: float = Field(..., gt=0, description="초기 자본금")
+    capital_pct: float = Field(..., gt=0, le=1, description="투입 비율 (0~1)")
+    stopLoss: float = Field(..., gt=0, description="손절 비율 (%)")
+    takeProfit: float = Field(..., gt=0, description="익절 비율 (%)")
+    startDate: str = Field(..., description="백테스트 시작일")
+    endDate: str = Field(..., description="백테스트 종료일")
+    commission: float = Field(..., ge=0, description="수수료율")
     timeframe: str = "15m"  # 기본값 15분
 
 class RunBacktestRequest(BaseModel):
@@ -55,6 +53,82 @@ class RunBacktestRequest(BaseModel):
 
 client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+# 백테스트 라우터 엔드포인트
+@app.get("/backtest/ping", tags=["Backtest"])
+def backtest_ping():
+    return {"message": "backtest router OK"}
+
+@app.get("/backtest/ohlcv", tags=["Backtest"])
+def get_ohlcv(
+    start_date: str = Query(..., description="조회 시작일 (YYYY-MM-DD)"),
+    end_date: str = Query(..., description="조회 종료일 (YYYY-MM-DD)")
+):
+    try:
+        df = fetch_btcusdt_ohlcv(start_date, end_date)
+        if df.empty:
+            return {"message": "데이터 없음", "row_count": 0}
+        return {
+            "row_count": len(df),
+            "columns": df.columns.tolist(),
+            "sample": df.head(5).to_dict(orient="records")
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 전략 라우터 엔드포인트
+@app.get("/strategy/ping", tags=["Strategy"])
+def strategy_ping():
+    return {"message": "strategy router OK"}
+
+# 디버그 라우터 클래스와 엔드포인트
+class LogCapture(io.StringIO):
+    def __init__(self):
+        super().__init__()
+        self.logs = []
+    
+    def write(self, text):
+        if text.strip():  # 빈 줄은 무시
+            self.logs.append(text.strip())
+        return super().write(text)
+
+@app.post("/debug/fetch-data", tags=["Debug"])
+async def fetch_data(
+    request: Dict[str, Any] = Body(...)
+):
+    start_date = request.get("start_date")
+    end_date = request.get("end_date")
+    max_data_points = request.get("max_data_points", 10000)
+    timeframe = request.get("timeframe", "15m")  # 기본값은 15분
+    
+    # 디버깅용 로그 추가
+    print(f"DEBUG: 요청 받은 파라미터 - start_date: {start_date}, end_date: {end_date}, max_data_points: {max_data_points}, timeframe: {timeframe}")
+    
+    if not start_date or not end_date:
+        raise HTTPException(status_code=400, detail="시작일과 종료일이 필요합니다.")
+    
+    try:
+        # 로그 캡처 시작
+        log_capture = LogCapture()
+        with redirect_stdout(log_capture):
+            df = fetch_btcusdt_ohlcv(
+                start_date=start_date, 
+                end_date=end_date, 
+                max_data_points=max_data_points,
+                timeframe=timeframe  # 시간 간격 파라미터 추가
+            )
+        
+        data = df.to_dict('records')
+        print(f"가져온 데이터 포인트 수: {len(data)}")
+        
+        return {
+            "data": data,
+            "logs": log_capture.logs
+        }
+    except Exception as e:
+        logging.exception("데이터 가져오기 오류")
+        raise HTTPException(status_code=500, detail=f"데이터 가져오기 오류: {str(e)}")
+
+# 메인 엔드포인트
 @app.post("/generate-code")
 async def generate_code(req: StrategyRequest):
     prompt = f'''
