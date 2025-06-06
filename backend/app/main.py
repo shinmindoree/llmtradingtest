@@ -11,7 +11,10 @@ import pandas as pd
 import backtrader as bt
 import logging
 import io
+import json
 from contextlib import redirect_stdout
+import ta  # 기술 지표 계산용
+import numpy as np  # 배열 연산용
 
 # 루트 디렉토리의 .env 파일 경로로 수정
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env')
@@ -51,7 +54,23 @@ class RunBacktestRequest(BaseModel):
     commission: float
     timeframe: str = "15m"  # 기본값 15분
 
+class ConfirmStrategyRequest(BaseModel):
+    strategy: str = Field(..., description="트레이딩 전략 설명")
+    capital: float = Field(..., gt=0, description="초기 자본금")
+    capital_pct: float = Field(..., gt=0, le=1, description="투입 비율 (0~1)")
+    stopLoss: float = Field(..., gt=0, description="손절 비율 (%)")
+    takeProfit: float = Field(..., gt=0, description="익절 비율 (%)")
+    startDate: str = Field(..., description="백테스트 시작일")
+    endDate: str = Field(..., description="백테스트 종료일")
+    commission: float = Field(..., ge=0, description="수수료율")
+    timeframe: str = "15m"  # 기본값 15분
+
 client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+# 데이터 디렉토리 확인 및 생성
+data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data')
+if not os.path.exists(data_dir):
+    os.makedirs(data_dir)
 
 # 백테스트 라우터 엔드포인트
 @app.get("/backtest/ping", tags=["Backtest"])
@@ -74,6 +93,200 @@ def get_ohlcv(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# 전략 확인 엔드포인트 (새로 추가)
+@app.post("/confirm-strategy", tags=["Strategy"])
+def confirm_strategy(req: ConfirmStrategyRequest):
+    # 파라미터 정보 정리
+    params_summary = {
+        "strategy": req.strategy,
+        "capital": req.capital,
+        "capital_pct": req.capital_pct,
+        "stopLoss": req.stopLoss,
+        "takeProfit": req.takeProfit,
+        "startDate": req.startDate,
+        "endDate": req.endDate,
+        "commission": req.commission,
+        "timeframe": req.timeframe
+    }
+    
+    # LLM을 통해 입력된 전략이 어떤 지표 기반인지 분석
+    strategy_analysis = analyze_strategy(req.strategy)
+    
+    return {
+        "params": params_summary,
+        "analysis": strategy_analysis,
+        "message": "전략과 파라미터가 확인되었습니다. 계속 진행하시겠습니까?"
+    }
+
+# 데이터 준비 엔드포인트 (새로 추가)
+@app.post("/prepare-data", tags=["Backtest"])
+async def prepare_data(req: ConfirmStrategyRequest):
+    try:
+        # 데이터 가져오기
+        df = fetch_btcusdt_ohlcv(req.startDate, req.endDate, timeframe=req.timeframe)
+        if df.empty:
+            raise HTTPException(status_code=404, detail="데이터 없음")
+        
+        # LLM을 통해 필요한 지표 분석
+        strategy_analysis = analyze_strategy(req.strategy)
+        indicators = strategy_analysis.get("indicators", [])
+        
+        # 데이터에 지표 추가
+        df = add_indicators_to_df(df, indicators)
+        
+        # CSV 파일로 저장
+        timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"btcusdt_{req.timeframe}_{timestamp}.csv"
+        filepath = os.path.join(data_dir, filename)
+        df.to_csv(filepath, index=False)
+        
+        return {
+            "success": True,
+            "file_saved": filename,
+            "rows": len(df),
+            "columns": df.columns.tolist(),
+            "indicators_added": indicators,
+            "sample_data": df.tail(5).to_dict(orient="records")
+        }
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        raise HTTPException(status_code=500, detail=f"{str(e)}\n{tb}")
+
+# 전략 분석 함수 (새로 추가)
+def analyze_strategy(strategy_text):
+    prompt = f'''
+분석해야 할 트레이딩 전략: {strategy_text}
+
+이 트레이딩 전략에 대해 다음 정보를 JSON 형식으로 추출해주세요:
+
+1. 사용된 기술적 지표들 (indicators): 배열 형태로 나열해주세요. 
+   예: ["RSI", "MACD", "Bollinger Bands", "MA", "EMA"]
+2. 진입 조건 (entry_conditions): 전략의 매수 진입 조건을 한 문장으로 요약
+3. 청산 조건 (exit_conditions): 전략의 매도/청산 조건을 한 문장으로 요약
+4. 전략 유형 (strategy_type): "추세추종", "역추세", "돌파", "변동성", "혼합" 중 하나
+
+반드시 다음 JSON 형식으로 응답해주세요:
+{{"indicators": ["지표1", "지표2", ...], "entry_conditions": "진입 조건 요약", "exit_conditions": "청산 조건 요약", "strategy_type": "전략 유형"}}
+'''
+    
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "당신은 트레이딩 전략을 분석하는 전문가입니다."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=500,
+            temperature=0.2,
+            response_format={"type": "json_object"}
+        )
+        
+        result = json.loads(response.choices[0].message.content)
+        return result
+    except Exception as e:
+        print(f"전략 분석 오류: {e}")
+        return {
+            "indicators": [],
+            "entry_conditions": "분석 실패",
+            "exit_conditions": "분석 실패",
+            "strategy_type": "알 수 없음"
+        }
+
+# 데이터프레임에 지표 추가 함수 (새로 추가)
+def add_indicators_to_df(df, indicators):
+    # 복사본 생성
+    result_df = df.copy()
+    
+    # 지표별로 추가
+    for indicator in indicators:
+        indicator = indicator.upper()
+        
+        if "RSI" in indicator:
+            # RSI 추가 (기본 14일)
+            result_df['RSI'] = ta.momentum.RSIIndicator(
+                close=result_df['close'], 
+                window=14
+            ).rsi()
+            
+        elif "MACD" in indicator:
+            # MACD 추가 (기본 12, 26, 9)
+            macd = ta.trend.MACD(
+                close=result_df['close'], 
+                window_fast=12, 
+                window_slow=26, 
+                window_sign=9
+            )
+            result_df['MACD'] = macd.macd()
+            result_df['MACD_signal'] = macd.macd_signal()
+            result_df['MACD_diff'] = macd.macd_diff()
+            
+        elif "BOLLINGER" in indicator or "BB" in indicator:
+            # 볼린저 밴드 추가 (기본 20일, 2표준편차)
+            bollinger = ta.volatility.BollingerBands(
+                close=result_df['close'],
+                window=20,
+                window_dev=2
+            )
+            result_df['BB_upper'] = bollinger.bollinger_hband()
+            result_df['BB_middle'] = bollinger.bollinger_mavg()
+            result_df['BB_lower'] = bollinger.bollinger_lband()
+            
+        elif "MA" in indicator or "SMA" in indicator:
+            # 이동평균선 추가 (20일, 50일, 200일)
+            result_df['MA20'] = ta.trend.SMAIndicator(
+                close=result_df['close'], 
+                window=20
+            ).sma_indicator()
+            
+            result_df['MA50'] = ta.trend.SMAIndicator(
+                close=result_df['close'], 
+                window=50
+            ).sma_indicator()
+            
+            result_df['MA200'] = ta.trend.SMAIndicator(
+                close=result_df['close'], 
+                window=200
+            ).sma_indicator()
+            
+        elif "EMA" in indicator:
+            # 지수이동평균 추가 (20일, 50일)
+            result_df['EMA20'] = ta.trend.EMAIndicator(
+                close=result_df['close'], 
+                window=20
+            ).ema_indicator()
+            
+            result_df['EMA50'] = ta.trend.EMAIndicator(
+                close=result_df['close'], 
+                window=50
+            ).ema_indicator()
+            
+        elif "STOCH" in indicator:
+            # 스토캐스틱 추가
+            stoch = ta.momentum.StochasticOscillator(
+                high=result_df['high'],
+                low=result_df['low'],
+                close=result_df['close'],
+                window=14,
+                smooth_window=3
+            )
+            result_df['STOCH_K'] = stoch.stoch()
+            result_df['STOCH_D'] = stoch.stoch_signal()
+            
+        elif "ATR" in indicator:
+            # ATR 추가 (14일)
+            result_df['ATR'] = ta.volatility.AverageTrueRange(
+                high=result_df['high'],
+                low=result_df['low'],
+                close=result_df['close'],
+                window=14
+            ).average_true_range()
+    
+    # NaN 값 처리
+    result_df = result_df.fillna(method='bfill')
+    
+    return result_df
 
 # 전략 라우터 엔드포인트
 @app.get("/strategy/ping", tags=["Strategy"])

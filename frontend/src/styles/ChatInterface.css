@@ -317,117 +317,120 @@
 /* 백테스트 결과 스타일 */
 .backtest-result {
   margin-top: 15px;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  background-color: var(--primary-bg);
-  overflow: hidden;
-}
-
-.result-header {
-  padding: 12px 15px;
-  border-bottom: 1px solid var(--border-color);
-  background-color: rgba(0, 0, 0, 0.2);
-}
-
-.result-header h3 {
-  margin: 0;
-  font-size: 1rem;
-  color: var(--accent-green);
-}
-
-.performance-metrics {
+  background-color: var(--primary-bg, #fff);
+  border: 1px solid var(--border-color, #e6e8eb);
+  border-radius: var(--border-radius, 8px);
   padding: 15px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.performance-metrics h4 {
-  margin-top: 0;
-  margin-bottom: 10px;
-  font-size: 0.9rem;
-  color: var(--muted-text);
-}
-
-.performance-metrics ul {
-  list-style-type: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 8px;
-}
-
-.performance-metrics li {
-  font-size: 0.85rem;
-  padding: 5px 0;
-}
-
-.result-chart {
-  padding: 15px;
-  border-top: 1px solid var(--border-color);
-}
-
-/* message assistant에 있는 backtest-result는 더 넓게 표시 */
-.message.assistant .backtest-result {
-  width: 150%;
-  max-width: 600px;
-}
-
-/* 트레이딩 내역 스타일 */
-.trade-history {
-  padding: 15px;
-  border-top: 1px solid var(--border-color);
-}
-
-.trade-history h4 {
+.backtest-result h4 {
   margin-top: 0;
   margin-bottom: 12px;
-  font-size: 0.9rem;
-  color: var(--muted-text);
+  font-size: 1em;
+  color: var(--text-primary, #333);
+  font-weight: 600;
 }
 
-.trade-table-container {
+.result-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 15px;
+}
+
+.stat-item {
+  background-color: var(--tertiary-bg, #f8f9fa);
+  padding: 8px 12px;
+  border-radius: var(--border-radius, 6px);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 120px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.stat-label {
+  font-size: 0.75em;
+  color: var(--text-secondary, #666);
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-size: 1.1em;
+  font-weight: bold;
+  color: var(--text-primary, #333);
+}
+
+.stat-value.positive {
+  color: var(--accent-green, #4caf50);
+}
+
+.stat-value.negative {
+  color: var(--accent-red, #f44336);
+}
+
+/* 거래 내역 테이블 스타일 */
+.trade-history {
+  margin-top: 15px;
+}
+
+.trades-container {
   overflow-x: auto;
-  max-height: 250px;
+  max-height: 300px;
   overflow-y: auto;
+  border: 1px solid var(--border-color, #e6e8eb);
+  border-radius: var(--border-radius, 6px);
 }
 
-.trade-table {
+.trades-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.85rem;
+  font-size: 0.85em;
 }
 
-.trade-table th {
-  background-color: rgba(0, 0, 0, 0.2);
+.trades-table th,
+.trades-table td {
+  border: 1px solid var(--border-color, #e6e8eb);
   padding: 8px 12px;
+  text-align: right;
+}
+
+.trades-table th {
+  background-color: var(--tertiary-bg, #f5f5f5);
+  font-weight: bold;
+  text-align: center;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.trades-table tr:nth-child(even) {
+  background-color: var(--primary-bg, #fafafa);
+}
+
+.trades-table tr.profit {
+  background-color: rgba(76, 175, 80, 0.05);
+}
+
+.trades-table tr.loss {
+  background-color: rgba(244, 67, 54, 0.05);
+}
+
+.trades-table td.positive {
+  color: var(--accent-green, #4caf50);
+}
+
+.trades-table td.negative {
+  color: var(--accent-red, #f44336);
+}
+
+/* 첫 번째 열(날짜) 왼쪽 정렬 */
+.trades-table th:nth-child(1),
+.trades-table th:nth-child(2),
+.trades-table td:nth-child(1),
+.trades-table td:nth-child(2) {
   text-align: left;
-  color: var(--muted-text);
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.trade-table td {
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.trade-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.trade-table tr.buy-trade {
-  background-color: rgba(38, 166, 154, 0.05);
-}
-
-.trade-table tr.sell-trade {
-  background-color: rgba(239, 83, 80, 0.05);
-}
-
-.positive-return {
-  color: #26a69a;
-}
-
-.negative-return {
-  color: #ef5350;
 }
 
 /* 프리셋 날짜 버튼 스타일 */

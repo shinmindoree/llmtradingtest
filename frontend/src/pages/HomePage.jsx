@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import BTCUSDTChart from '../components/BTCUSDTChart';
 import ChatInterface from '../components/ChatInterface';
@@ -7,8 +7,8 @@ import '../styles/HomePage.css';
 
 const HomePage = () => {
   const [timeframe, setTimeframe] = useState('1h');
-  // const [backtestResult, setBacktestResult] = useState(null); // 상태는 유지, 표시만 제거
-  // const [currentStrategy, setCurrentStrategy] = useState(''); // 상태는 유지, 표시만 제거
+  const [_backtestResult, setBacktestResult] = useState(null);
+  const [_currentStrategy, setCurrentStrategy] = useState('');
   const [parameters, setParameters] = useState({
     capital: 10000,
     capital_pct: 0.3,
@@ -20,9 +20,6 @@ const HomePage = () => {
     timeframe: timeframe
   });
   
-  const [backtestResult, setBacktestResult] = useState(null); // 실제 백테스트 결과 저장은 필요
-  const [currentStrategy, setCurrentStrategy] = useState(''); // 현재 전략명 저장도 필요
-
   // timeframe 변경시 parameters 업데이트
   useEffect(() => {
     setParameters(prev => ({
