@@ -1,0 +1,1054 @@
+INFO:     Will watch for changes in these directories: ['/Users/minsuk/Documents/llmtradingtest/backend']
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [13334] using StatReload
+INFO:     Started server process [13344]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:57070 - "POST /backtest/set-debug HTTP/1.1" 200 OK
+[백테스트 디버그] 백테스트 요청: 2024-05-01 ~ 2024-05-31, 시간 간격: 1h
+[백테스트 디버그] CSV 파일 발견: btcusdt_1h_20250607_002422.csv. 이 파일을 백테스트에 사용합니다.
+[백테스트 디버그] CSV 파일 경로: /Users/minsuk/Documents/llmtradingtest/data/btcusdt_1h_20250607_002422.csv
+CSV 파일에서 데이터 로딩: /Users/minsuk/Documents/llmtradingtest/data/btcusdt_1h_20250607_002422.csv
+CSV 파일에서 721개 데이터를 로드했습니다: /Users/minsuk/Documents/llmtradingtest/data/btcusdt_1h_20250607_002422.csv
+컬럼: ['timestamp', 'open', 'high', 'low', 'close', 'volume', 'RSI']
+데이터 범위: 2024-05-01 00:00:00 ~ 2024-05-31 00:00:00
+[백테스트 디버그] 날짜 필터링: 721개 -> 721개 레코드
+[백테스트 디버그] RSI 컬럼이 존재합니다. RSI 값 범위: 23.38 ~ 88.53
+[백테스트 디버그] RSI < 30인 데이터 수: 28
+[백테스트 디버그] RSI > 70인 데이터 수: 71
+[백테스트 디버그] 데이터 로드 완료: 721개 레코드
+[백테스트 디버그] 데이터 범위: 2024-05-01 00:00:00 ~ 2024-05-31 00:00:00
+[백테스트 디버그] 데이터 컬럼: ['timestamp', 'open', 'high', 'low', 'close', 'volume', 'RSI']
+[백테스트 디버그] 첫 5개 데이터 샘플:
+            timestamp     open     high      low    close     volume        RSI
+0 2024-05-01 00:00:00  60651.2  60816.7  60060.6  60217.2  10900.384  23.785441
+1 2024-05-01 01:00:00  60217.3  60389.0  59833.0  60110.6  11290.556  23.785441
+2 2024-05-01 02:00:00  60110.6  60159.2  59555.0  59902.4  13309.707  23.785441
+3 2024-05-01 03:00:00  59902.3  60294.8  59873.0  60214.0   6341.794  23.785441
+4 2024-05-01 04:00:00  60214.0  60331.8  60156.2  60262.6   4701.579  23.785441
+[백테스트 디버그] 마지막 5개 데이터 샘플:
+              timestamp     open     high      low    close     volume        RSI
+716 2024-05-30 20:00:00  68705.0  68712.0  68068.8  68525.6  11383.873  53.279403
+717 2024-05-30 21:00:00  68525.5  68588.0  68368.1  68462.6   3166.786  52.220277
+718 2024-05-30 22:00:00  68462.6  68491.0  68273.6  68356.1   2652.130  50.396456
+719 2024-05-30 23:00:00  68356.2  68574.0  68284.0  68402.5   2737.253  51.196198
+720 2024-05-31 00:00:00  68402.6  68516.4  68316.0  68512.2   2852.615  53.120585
+[백테스트 디버그] 디버깅용 데이터 파일 저장: /Users/minsuk/Documents/llmtradingtest/data/debug_data_20250607_003522.csv
+[백테스트 디버그] Strategy 코드 실행 중...
+[백테스트 디버그] 전략 코드:
+==================================================
+
+import backtrader as bt
+
+class Strategy(bt.Strategy):
+    params = (
+        ('capital_pct', 0.3),
+        ('stop_loss', 2.0),
+        ('take_profit', 5.0),
+        ('commission', 0.0004),
+    )
+
+    def __init__(self):
+        self.rsi = bt.indicators.RSI(self.data.close)
+
+    def next(self):
+        if not self.position:
+            if self.rsi[0] < 30:
+                size = (self.broker.getvalue() * self.params.capital_pct) / self.data.close[0]
+                size = max(0.001, size)
+                size = round(size, 6)
+                self.buy(size=size)
+        else:
+            if self.rsi[0] > 70:
+                self.sell()
+            elif self.data.close[0] >= self.position.price * (1 + self.params.take_profit / 100):
+                self.sell()
+            elif self.data.close[0] <= self.position.price * (1 - self.params.stop_loss / 100):
+                self.sell()
+
+==================================================
+[백테스트 디버그] Strategy 클래스 로드 성공
+[백테스트 디버그] 전략 파라미터: capital_pct=0.3, stop_loss=2.0%, take_profit=5.0%, commission=0.0004
+[백테스트 디버그] 시작 자본금: 10000.0
+[백테스트 디버그] 백테스트 실행 중...
+[백테스트 디버그] 경고: 거래 크기가 너무 작습니다: 0.0
+[백테스트 디버그] 거래 종료: {'entry_date': '2024-05-01 15:00:00', 'exit_date': '2024-05-03 13:00:00', 'entry_price': 57461.5, 'exit_price': 219104.40031732013, 'pnl': 161.64290031732014, 'pnl_pct': 281.3064405163808, 'size': 0.001}
+[백테스트 디버그] 거래 분석 데이터: AutoOrderedDict({'total': AutoOrderedDict({'total': 2, 'open': 1, 'closed': 1}), 'streak': AutoOrderedDict({'won': AutoOrderedDict({'current': 1, 'longest': 1}), 'lost': AutoOrderedDict({'current': 0, 'longest': 0})}), 'pnl': AutoOrderedDict({'gross': AutoOrderedDict({'total': 164.10854970000014, 'average': 164.10854970000014}), 'net': AutoOrderedDict({'total': 161.64290031732014, 'average': 161.64290031732014})}), 'won': AutoOrderedDict({'total': 1, 'pnl': AutoOrderedDict({'total': 161.64290031732014, 'average': 161.64290031732014, 'max': 161.64290031732014})}), 'lost': AutoOrderedDict({'total': 0, 'pnl': AutoOrderedDict({'total': 0.0, 'average': 0.0, 'max': 0.0})}), 'long': AutoOrderedDict({'total': 1, 'pnl': AutoOrderedDict({'total': 161.64290031732014, 'average': 161.64290031732014, 'won': AutoOrderedDict({'total': 161.64290031732014, 'average': 161.64290031732014, 'max': 161.64290031732014}), 'lost': AutoOrderedDict({'total': 0.0, 'average': 0.0, 'max': 0.0})}), 'won': 1, 'lost': 0}), 'short': AutoOrderedDict({'total': 0, 'pnl': AutoOrderedDict({'total': 0.0, 'average': 0.0, 'won': AutoOrderedDict({'total': 0.0, 'average': 0.0, 'max': 0.0}), 'lost': AutoOrderedDict({'total': 0.0, 'average': 0.0, 'max': 0.0})}), 'won': 0, 'lost': 0}), 'len': AutoOrderedDict({'total': 46, 'average': 46.0, 'max': 46, 'min': 46, 'won': AutoOrderedDict({'total': 46, 'average': 46.0, 'max': 46, 'min': 46}), 'lost': AutoOrderedDict({'total': 0, 'average': 0.0, 'max': 0}), 'long': AutoOrderedDict({'total': 46, 'average': 46.0, 'max': 46, 'min': 46, 'won': AutoOrderedDict({'total': 46, 'average': 46.0, 'max': 46, 'min': 46}), 'lost': AutoOrderedDict({'total': 0, 'average': 0.0, 'max': 0, 'min': 9223372036854775807})}), 'short': AutoOrderedDict({'total': 0, 'average': 0.0, 'max': 0, 'min': 9223372036854775807, 'won': AutoOrderedDict({'total': 0, 'average': 0.0, 'max': 0, 'min': 9223372036854775807}), 'lost': AutoOrderedDict({'total': 0, 'average': 0.0, 'max': 0, 'min': 9223372036854775807})})})})
+[백테스트 디버그] 거래 로그:
+[백테스트 디버그] 거래 #1: {'entry_date': '2024-05-01 15:00:00', 'exit_date': '2024-05-03 13:00:00', 'entry_price': 57461.5, 'exit_price': 219104.40031732013, 'pnl': 161.64290031732014, 'pnl_pct': 281.3064405163808, 'size': 0.001}
+[백테스트 디버그] 로거에서 추출한 거래 수: 1
+[백테스트 디버그] 거래 수 업데이트: 1
+[백테스트 디버그] 승률 재계산: 100.0% (1/1)
+[백테스트 디버그] 손익비 재계산: 999.99 (이익: 161.64290031732014, 손실: 0)
+[백테스트 디버그] 수익률 재계산: 1.62% (총 PnL: 161.64290031732014, 최종 자산: 10161.64290031732)
+[백테스트 디버그] 자산 곡선이 비정상적입니다. 재계산합니다.
+[백테스트 디버그] 자산 곡선 재계산 완료: [10161.64290031732]
+[백테스트 디버그] 백테스트 완료: 1개 거래, 승률: 100.0%, 손익비: 999.99
+INFO:     127.0.0.1:57071 - "POST /run-backtest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57488 - "OPTIONS /confirm-strategy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57488 - "POST /confirm-strategy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57542 - "OPTIONS /prepare-data HTTP/1.1" 200 OK
+/Users/minsuk/Documents/llmtradingtest/backend/app/main.py:297: FutureWarning: DataFrame.fillna with 'method' is deprecated and will raise in a future version. Use obj.ffill() or obj.bfill() instead.
+  result_df = result_df.fillna(method='bfill')
+Binance API에서 2024-05-01~2024-05-31 데이터 가져오기 시작 (최대 10000개, 시간 간격: 1h)
+API 호출 1: 1000개 데이터 가져옴 (시작: 2024-05-01 00:00:00, 종료: 2024-06-11 15:00:00)
+종료 시간에 도달했습니다: 2024-06-11 15:00:00.001000 > 2024-05-31 00:00:00
+Binance API에서 총 721개 데이터를 가져왔습니다 (API 호출 횟수: 1, 시간 간격: 1h).
+INFO:     127.0.0.1:57542 - "POST /prepare-data HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57542 - "OPTIONS /backtest/set-debug HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57556 - "POST /backtest/set-debug HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57556 - "OPTIONS /generate-code HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57542 - "POST /generate-code HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57542 - "OPTIONS /run-backtest HTTP/1.1" 200 OK
+[백테스트 디버그] 백테스트 요청: 2024-05-01 ~ 2024-05-31, 시간 간격: 1h
+[백테스트 디버그] CSV 파일 발견: btcusdt_1h_20250607_003649.csv. 이 파일을 백테스트에 사용합니다.
+[백테스트 디버그] CSV 파일 경로: /Users/minsuk/Documents/llmtradingtest/data/btcusdt_1h_20250607_003649.csv
+CSV 파일에서 데이터 로딩: /Users/minsuk/Documents/llmtradingtest/data/btcusdt_1h_20250607_003649.csv
+CSV 파일에서 721개 데이터를 로드했습니다: /Users/minsuk/Documents/llmtradingtest/data/btcusdt_1h_20250607_003649.csv
+컬럼: ['timestamp', 'open', 'high', 'low', 'close', 'volume', 'RSI']
+데이터 범위: 2024-05-01 00:00:00 ~ 2024-05-31 00:00:00
+[백테스트 디버그] 날짜 필터링: 721개 -> 721개 레코드
+[백테스트 디버그] RSI 컬럼이 존재합니다. RSI 값 범위: 23.38 ~ 88.53
+[백테스트 디버그] RSI < 30인 데이터 수: 28
+[백테스트 디버그] RSI > 70인 데이터 수: 71
+[백테스트 디버그] 데이터 로드 완료: 721개 레코드
+[백테스트 디버그] 데이터 범위: 2024-05-01 00:00:00 ~ 2024-05-31 00:00:00
+[백테스트 디버그] 데이터 컬럼: ['timestamp', 'open', 'high', 'low', 'close', 'volume', 'RSI']
+[백테스트 디버그] 첫 5개 데이터 샘플:
+            timestamp     open     high      low    close     volume        RSI
+0 2024-05-01 00:00:00  60651.2  60816.7  60060.6  60217.2  10900.384  23.785441
+1 2024-05-01 01:00:00  60217.3  60389.0  59833.0  60110.6  11290.556  23.785441
+2 2024-05-01 02:00:00  60110.6  60159.2  59555.0  59902.4  13309.707  23.785441
+3 2024-05-01 03:00:00  59902.3  60294.8  59873.0  60214.0   6341.794  23.785441
+4 2024-05-01 04:00:00  60214.0  60331.8  60156.2  60262.6   4701.579  23.785441
+[백테스트 디버그] 마지막 5개 데이터 샘플:
+              timestamp     open     high      low    close     volume        RSI
+716 2024-05-30 20:00:00  68705.0  68712.0  68068.8  68525.6  11383.873  53.279403
+717 2024-05-30 21:00:00  68525.5  68588.0  68368.1  68462.6   3166.786  52.220277
+718 2024-05-30 22:00:00  68462.6  68491.0  68273.6  68356.1   2652.130  50.396456
+719 2024-05-30 23:00:00  68356.2  68574.0  68284.0  68402.5   2737.253  51.196198
+720 2024-05-31 00:00:00  68402.6  68516.4  68316.0  68512.2   2852.615  53.120585
+[백테스트 디버그] 디버깅용 데이터 파일 저장: /Users/minsuk/Documents/llmtradingtest/data/debug_data_20250607_003656.csv
+[백테스트 디버그] Strategy 코드 실행 중...
+[백테스트 디버그] 전략 코드:
+==================================================
+class Strategy(bt.Strategy):
+    params = (
+        ('capital_pct', 0.3),
+        ('stop_loss', 2.0),
+        ('take_profit', 5.0),
+        ('commission', 0.0004),
+    )
+
+    def __init__(self):
+        self.rsi = bt.indicators.RSI(self.data.close)
+        self.order = None
+        self.price_entry = None
+
+    def next(self):
+        if not self.position:
+            if self.rsi[0] < 30:
+                size = (self.broker.getvalue() * self.params.capital_pct) / self.data.close[0]
+                size = max(0.001, size)
+                size = round(size, 6)
+                print(f'Calculated size for buy: {size}')
+                self.buy(size=size)
+        else:
+            if self.rsi[0] > 70:
+                print('RSI > 70, selling position')
+                self.sell()
+            elif self.data.close[0] >= self.position.price * (1 + self.params.take_profit / 100):
+                print('Take profit condition met, selling position')
+                self.sell()
+            elif self.data.close[0] <= self.position.price * (1 - self.params.stop_loss / 100):
+                print('Stop loss condition met, selling position')
+                self.sell()
+==================================================
+[백테스트 디버그] Strategy 클래스 로드 성공
+[백테스트 디버그] 전략 파라미터: capital_pct=0.3, stop_loss=2.0%, take_profit=5.0%, commission=0.0004
+[백테스트 디버그] 시작 자본금: 10000.0
+[백테스트 디버그] 백테스트 실행 중...
+Calculated size for buy: 0.052209
+Take profit condition met, selling position
+[백테스트 디버그] 경고: 거래 크기가 너무 작습니다: 0.0
+[백테스트 디버그] 거래 종료: {'entry_date': '2024-05-01 15:00:00', 'exit_date': '2024-05-03 13:00:00', 'entry_price': 57461.5, 'exit_price': 219104.40031732013, 'pnl': 161.64290031732014, 'pnl_pct': 281.3064405163808, 'size': 0.001}
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+Stop loss condition met, selling position
+Stop loss condition met, selling position
+Stop loss condition met, selling position
+Stop loss condition met, selling position
+Stop loss condition met, selling position
+Stop loss condition met, selling position
+Stop loss condition met, selling position
+Stop loss condition met, selling position
+Stop loss condition met, selling position
+Stop loss condition met, selling position
+Stop loss condition met, selling position
+Stop loss condition met, selling position
+Stop loss condition met, selling position
+Stop loss condition met, selling position
+Stop loss condition met, selling position
+Stop loss condition met, selling position
+Stop loss condition met, selling position
+Stop loss condition met, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+RSI > 70, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+Take profit condition met, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+Take profit condition met, selling position
+RSI > 70, selling position
+RSI > 70, selling position
+[백테스트 디버그] 거래 분석 데이터: AutoOrderedDict({'total': AutoOrderedDict({'total': 2, 'open': 1, 'closed': 1}), 'streak': AutoOrderedDict({'won': AutoOrderedDict({'current': 1, 'longest': 1}), 'lost': AutoOrderedDict({'current': 0, 'longest': 0})}), 'pnl': AutoOrderedDict({'gross': AutoOrderedDict({'total': 164.10854970000014, 'average': 164.10854970000014}), 'net': AutoOrderedDict({'total': 161.64290031732014, 'average': 161.64290031732014})}), 'won': AutoOrderedDict({'total': 1, 'pnl': AutoOrderedDict({'total': 161.64290031732014, 'average': 161.64290031732014, 'max': 161.64290031732014})}), 'lost': AutoOrderedDict({'total': 0, 'pnl': AutoOrderedDict({'total': 0.0, 'average': 0.0, 'max': 0.0})}), 'long': AutoOrderedDict({'total': 1, 'pnl': AutoOrderedDict({'total': 161.64290031732014, 'average': 161.64290031732014, 'won': AutoOrderedDict({'total': 161.64290031732014, 'average': 161.64290031732014, 'max': 161.64290031732014}), 'lost': AutoOrderedDict({'total': 0.0, 'average': 0.0, 'max': 0.0})}), 'won': 1, 'lost': 0}), 'short': AutoOrderedDict({'total': 0, 'pnl': AutoOrderedDict({'total': 0.0, 'average': 0.0, 'won': AutoOrderedDict({'total': 0.0, 'average': 0.0, 'max': 0.0}), 'lost': AutoOrderedDict({'total': 0.0, 'average': 0.0, 'max': 0.0})}), 'won': 0, 'lost': 0}), 'len': AutoOrderedDict({'total': 46, 'average': 46.0, 'max': 46, 'min': 46, 'won': AutoOrderedDict({'total': 46, 'average': 46.0, 'max': 46, 'min': 46}), 'lost': AutoOrderedDict({'total': 0, 'average': 0.0, 'max': 0}), 'long': AutoOrderedDict({'total': 46, 'average': 46.0, 'max': 46, 'min': 46, 'won': AutoOrderedDict({'total': 46, 'average': 46.0, 'max': 46, 'min': 46}), 'lost': AutoOrderedDict({'total': 0, 'average': 0.0, 'max': 0, 'min': 9223372036854775807})}), 'short': AutoOrderedDict({'total': 0, 'average': 0.0, 'max': 0, 'min': 9223372036854775807, 'won': AutoOrderedDict({'total': 0, 'average': 0.0, 'max': 0, 'min': 9223372036854775807}), 'lost': AutoOrderedDict({'total': 0, 'average': 0.0, 'max': 0, 'min': 9223372036854775807})})})})
+[백테스트 디버그] 거래 로그:
+[백테스트 디버그] 거래 #1: {'entry_date': '2024-05-01 15:00:00', 'exit_date': '2024-05-03 13:00:00', 'entry_price': 57461.5, 'exit_price': 219104.40031732013, 'pnl': 161.64290031732014, 'pnl_pct': 281.3064405163808, 'size': 0.001}
+[백테스트 디버그] 로거에서 추출한 거래 수: 1
+[백테스트 디버그] 거래 수 업데이트: 1
+[백테스트 디버그] 승률 재계산: 100.0% (1/1)
+[백테스트 디버그] 손익비 재계산: 999.99 (이익: 161.64290031732014, 손실: 0)
+[백테스트 디버그] 수익률 재계산: 1.62% (총 PnL: 161.64290031732014, 최종 자산: 10161.64290031732)
+[백테스트 디버그] 자산 곡선이 비정상적입니다. 재계산합니다.
+[백테스트 디버그] 자산 곡선 재계산 완료: [10161.64290031732]
+[백테스트 디버그] 백테스트 완료: 1개 거래, 승률: 100.0%, 손익비: 999.99
+INFO:     127.0.0.1:57542 - "POST /run-backtest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57804 - "POST /confirm-strategy HTTP/1.1" 200 OK
+/Users/minsuk/Documents/llmtradingtest/backend/app/main.py:297: FutureWarning: DataFrame.fillna with 'method' is deprecated and will raise in a future version. Use obj.ffill() or obj.bfill() instead.
+  result_df = result_df.fillna(method='bfill')
+Binance API에서 2024-05-01~2024-05-31 데이터 가져오기 시작 (최대 10000개, 시간 간격: 1h)
+API 호출 1: 1000개 데이터 가져옴 (시작: 2024-05-01 00:00:00, 종료: 2024-06-11 15:00:00)
+종료 시간에 도달했습니다: 2024-06-11 15:00:00.001000 > 2024-05-31 00:00:00
+Binance API에서 총 721개 데이터를 가져왔습니다 (API 호출 횟수: 1, 시간 간격: 1h).
+INFO:     127.0.0.1:57838 - "POST /prepare-data HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57838 - "POST /backtest/set-debug HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57838 - "POST /generate-code HTTP/1.1" 200 OK
+[백테스트 디버그] 백테스트 요청: 2024-05-01 ~ 2024-05-31, 시간 간격: 1h
+[백테스트 디버그] CSV 파일 발견: btcusdt_1h_20250607_003746.csv. 이 파일을 백테스트에 사용합니다.
+[백테스트 디버그] CSV 파일 경로: /Users/minsuk/Documents/llmtradingtest/data/btcusdt_1h_20250607_003746.csv
+CSV 파일에서 데이터 로딩: /Users/minsuk/Documents/llmtradingtest/data/btcusdt_1h_20250607_003746.csv
+CSV 파일에서 721개 데이터를 로드했습니다: /Users/minsuk/Documents/llmtradingtest/data/btcusdt_1h_20250607_003746.csv
+컬럼: ['timestamp', 'open', 'high', 'low', 'close', 'volume', 'RSI']
+데이터 범위: 2024-05-01 00:00:00 ~ 2024-05-31 00:00:00
+[백테스트 디버그] 날짜 필터링: 721개 -> 721개 레코드
+[백테스트 디버그] RSI 컬럼이 존재합니다. RSI 값 범위: 23.38 ~ 88.53
+[백테스트 디버그] RSI < 30인 데이터 수: 28
+[백테스트 디버그] RSI > 70인 데이터 수: 71
+[백테스트 디버그] 데이터 로드 완료: 721개 레코드
+[백테스트 디버그] 데이터 범위: 2024-05-01 00:00:00 ~ 2024-05-31 00:00:00
+[백테스트 디버그] 데이터 컬럼: ['timestamp', 'open', 'high', 'low', 'close', 'volume', 'RSI']
+[백테스트 디버그] 첫 5개 데이터 샘플:
+            timestamp     open     high      low    close     volume        RSI
+0 2024-05-01 00:00:00  60651.2  60816.7  60060.6  60217.2  10900.384  23.785441
+1 2024-05-01 01:00:00  60217.3  60389.0  59833.0  60110.6  11290.556  23.785441
+2 2024-05-01 02:00:00  60110.6  60159.2  59555.0  59902.4  13309.707  23.785441
+3 2024-05-01 03:00:00  59902.3  60294.8  59873.0  60214.0   6341.794  23.785441
+4 2024-05-01 04:00:00  60214.0  60331.8  60156.2  60262.6   4701.579  23.785441
+[백테스트 디버그] 마지막 5개 데이터 샘플:
+              timestamp     open     high      low    close     volume        RSI
+716 2024-05-30 20:00:00  68705.0  68712.0  68068.8  68525.6  11383.873  53.279403
+717 2024-05-30 21:00:00  68525.5  68588.0  68368.1  68462.6   3166.786  52.220277
+718 2024-05-30 22:00:00  68462.6  68491.0  68273.6  68356.1   2652.130  50.396456
+719 2024-05-30 23:00:00  68356.2  68574.0  68284.0  68402.5   2737.253  51.196198
+720 2024-05-31 00:00:00  68402.6  68516.4  68316.0  68512.2   2852.615  53.120585
+[백테스트 디버그] 디버깅용 데이터 파일 저장: /Users/minsuk/Documents/llmtradingtest/data/debug_data_20250607_003750.csv
+[백테스트 디버그] Strategy 코드 실행 중...
+[백테스트 디버그] 전략 코드:
+==================================================
+class Strategy(bt.Strategy):
+    params = (
+        ('capital_pct', 1.0),
+        ('stop_loss', 1.0),
+        ('take_profit', 1.0),
+        ('commission', 0.0004),
+    )
+
+    def __init__(self):
+        self.rsi = bt.indicators.RSI(self.data.close)
+        self.order = None
+        self.price_entry = None
+
+    def next(self):
+        if not self.position:
+            if self.rsi[0] <= 50:
+                size = (self.broker.getvalue() * self.params.capital_pct) / self.data.close[0]
+                size = max(0.001, size)
+                size = round(size, 6)
+                print(f"Calculated size: {size}")
+                self.buy(size=size)
+        else:
+            if self.data.close[0] >= self.position.price * (1 + self.params.take_profit / 100):
+                self.sell()
+            elif self.data.close[0] <= self.position.price * (1 - self.params.stop_loss / 100):
+                self.sell()
+==================================================
+[백테스트 디버그] Strategy 클래스 로드 성공
+[백테스트 디버그] 전략 파라미터: capital_pct=1.0, stop_loss=1.0%, take_profit=1.0%, commission=0.0004
+[백테스트 디버그] 시작 자본금: 10000.0
+[백테스트 디버그] 백테스트 실행 중...
+Calculated size: 0.17403
+Calculated size: 0.175854
+Calculated size: 0.175372
+Calculated size: 0.17422
+Calculated size: 0.169824
+Calculated size: 0.175637
+Calculated size: 0.174416
+Calculated size: 0.172747
+Calculated size: 0.172837
+Calculated size: 0.171504
+Calculated size: 0.173201
+Calculated size: 0.175142
+Calculated size: 0.174097
+Calculated size: 0.174193
+Calculated size: 0.174298
+Calculated size: 0.174024
+Calculated size: 0.173609
+Calculated size: 0.173476
+Calculated size: 0.172997
+Calculated size: 0.173083
+Calculated size: 0.173084
+Calculated size: 0.169466
+Calculated size: 0.158429
+Calculated size: 0.156294
+Calculated size: 0.157282
+Calculated size: 0.156602
+Calculated size: 0.158149
+Calculated size: 0.157233
+Calculated size: 0.15831
+Calculated size: 0.158349
+Calculated size: 0.157808
+Calculated size: 0.158228
+Calculated size: 0.158018
+Calculated size: 0.157446
+Calculated size: 0.157563
+Calculated size: 0.158371
+Calculated size: 0.157453
+Calculated size: 0.158218
+Calculated size: 0.157662
+Calculated size: 0.157406
+Calculated size: 0.157248
+Calculated size: 0.157549
+Calculated size: 0.157147
+Calculated size: 0.158249
+Calculated size: 0.157201
+Calculated size: 0.157823
+Calculated size: 0.158353
+Calculated size: 0.158643
+Calculated size: 0.158837
+Calculated size: 0.158629
+Calculated size: 0.159185
+Calculated size: 0.160524
+Calculated size: 0.159831
+Calculated size: 0.16
+Calculated size: 0.159415
+Calculated size: 0.159074
+Calculated size: 0.159991
+Calculated size: 0.15977
+Calculated size: 0.160083
+Calculated size: 0.160806
+Calculated size: 0.160363
+Calculated size: 0.160551
+Calculated size: 0.160198
+Calculated size: 0.160707
+Calculated size: 0.160753
+Calculated size: 0.160212
+Calculated size: 0.159923
+Calculated size: 0.160638
+Calculated size: 0.160207
+Calculated size: 0.159809
+Calculated size: 0.160024
+Calculated size: 0.160904
+Calculated size: 0.162485
+Calculated size: 0.162697
+Calculated size: 0.163327
+Calculated size: 0.163511
+Calculated size: 0.162952
+Calculated size: 0.162525
+Calculated size: 0.16226
+Calculated size: 0.162213
+Calculated size: 0.162664
+Calculated size: 0.162477
+Calculated size: 0.162391
+Calculated size: 0.163339
+Calculated size: 0.163149
+Calculated size: 0.163205
+Calculated size: 0.164501
+Calculated size: 0.163846
+Calculated size: 0.162652
+Calculated size: 0.163491
+Calculated size: 0.162587
+Calculated size: 0.163841
+Calculated size: 0.16422
+Calculated size: 0.163833
+Calculated size: 0.16565
+Calculated size: 0.164788
+Calculated size: 0.164792
+Calculated size: 0.165305
+Calculated size: 0.164751
+Calculated size: 0.164416
+Calculated size: 0.164533
+Calculated size: 0.164599
+Calculated size: 0.164364
+Calculated size: 0.164304
+Calculated size: 0.164728
+Calculated size: 0.164637
+Calculated size: 0.164202
+Calculated size: 0.164135
+Calculated size: 0.163964
+Calculated size: 0.164572
+Calculated size: 0.164268
+Calculated size: 0.164677
+Calculated size: 0.164868
+Calculated size: 0.164796
+Calculated size: 0.164098
+Calculated size: 0.164457
+Calculated size: 0.163746
+Calculated size: 0.163972
+Calculated size: 0.16423
+Calculated size: 0.164258
+Calculated size: 0.164449
+Calculated size: 0.164064
+Calculated size: 0.164364
+Calculated size: 0.164207
+Calculated size: 0.164197
+Calculated size: 0.16415
+Calculated size: 0.164463
+Calculated size: 0.164
+Calculated size: 0.163872
+Calculated size: 0.163586
+Calculated size: 0.16405
+Calculated size: 0.164371
+Calculated size: 0.161252
+Calculated size: 0.161285
+Calculated size: 0.161735
+Calculated size: 0.161897
+Calculated size: 0.162086
+Calculated size: 0.16189
+Calculated size: 0.162505
+Calculated size: 0.162152
+Calculated size: 0.161885
+Calculated size: 0.161944
+Calculated size: 0.162849
+Calculated size: 0.163162
+Calculated size: 0.162844
+Calculated size: 0.162434
+Calculated size: 0.162365
+Calculated size: 0.162153
+Calculated size: 0.162127
+Calculated size: 0.162468
+Calculated size: 0.162831
+Calculated size: 0.162157
+Calculated size: 0.161975
+Calculated size: 0.153529
+Calculated size: 0.153902
+Calculated size: 0.15363
+Calculated size: 0.153487
+Calculated size: 0.153261
+Calculated size: 0.153333
+Calculated size: 0.153114
+Calculated size: 0.149703
+Calculated size: 0.149486
+Calculated size: 0.14956
+Calculated size: 0.15006
+Calculated size: 0.149939
+Calculated size: 0.150223
+Calculated size: 0.151508
+Calculated size: 0.151208
+Calculated size: 0.150936
+Calculated size: 0.150778
+Calculated size: 0.150968
+Calculated size: 0.150537
+Calculated size: 0.15039
+Calculated size: 0.150069
+Calculated size: 0.150053
+Calculated size: 0.150665
+Calculated size: 0.143113
+Calculated size: 0.143426
+Calculated size: 0.143032
+Calculated size: 0.14309
+Calculated size: 0.144263
+Calculated size: 0.143369
+Calculated size: 0.143366
+Calculated size: 0.14358
+Calculated size: 0.142946
+Calculated size: 0.14301
+Calculated size: 0.143349
+Calculated size: 0.143327
+Calculated size: 0.143502
+Calculated size: 0.143625
+Calculated size: 0.14308
+Calculated size: 0.143643
+Calculated size: 0.143538
+Calculated size: 0.143935
+Calculated size: 0.143818
+Calculated size: 0.144526
+Calculated size: 0.144469
+Calculated size: 0.14379
+Calculated size: 0.143829
+Calculated size: 0.143784
+Calculated size: 0.14392
+Calculated size: 0.1437
+Calculated size: 0.143867
+Calculated size: 0.143695
+Calculated size: 0.143498
+Calculated size: 0.143703
+Calculated size: 0.143965
+Calculated size: 0.146923
+Calculated size: 0.147498
+Calculated size: 0.146836
+Calculated size: 0.147365
+Calculated size: 0.14777
+Calculated size: 0.148305
+Calculated size: 0.148723
+Calculated size: 0.147424
+Calculated size: 0.147018
+Calculated size: 0.147688
+Calculated size: 0.147059
+Calculated size: 0.147338
+Calculated size: 0.147577
+Calculated size: 0.147055
+Calculated size: 0.147263
+Calculated size: 0.147629
+Calculated size: 0.148548
+Calculated size: 0.149452
+Calculated size: 0.148829
+Calculated size: 0.148795
+Calculated size: 0.148373
+Calculated size: 0.148409
+Calculated size: 0.148405
+Calculated size: 0.148092
+Calculated size: 0.149019
+Calculated size: 0.145085
+Calculated size: 0.144924
+Calculated size: 0.145212
+Calculated size: 0.145317
+Calculated size: 0.145356
+Calculated size: 0.145307
+Calculated size: 0.145084
+Calculated size: 0.145493
+Calculated size: 0.145892
+Calculated size: 0.14584
+Calculated size: 0.145934
+Calculated size: 0.14524
+Calculated size: 0.145137
+Calculated size: 0.145384
+Calculated size: 0.14589
+Calculated size: 0.146145
+Calculated size: 0.145643
+Calculated size: 0.145673
+Calculated size: 0.145739
+Calculated size: 0.145773
+Calculated size: 0.146065
+Calculated size: 0.145656
+Calculated size: 0.145686
+Calculated size: 0.14556
+Calculated size: 0.146908
+Calculated size: 0.147473
+Calculated size: 0.146894
+Calculated size: 0.147069
+Calculated size: 0.147684
+Calculated size: 0.146683
+Calculated size: 0.146291
+Calculated size: 0.145757
+Calculated size: 0.146175
+Calculated size: 0.146557
+Calculated size: 0.147445
+Calculated size: 0.147064
+Calculated size: 0.146199
+Calculated size: 0.147604
+Calculated size: 0.147466
+Calculated size: 0.147241
+Calculated size: 0.146265
+Calculated size: 0.147073
+Calculated size: 0.147246
+Calculated size: 0.147164
+Calculated size: 0.14697
+Calculated size: 0.147456
+Calculated size: 0.147179
+Calculated size: 0.147229
+Calculated size: 0.147775
+Calculated size: 0.148322
+Calculated size: 0.147938
+Calculated size: 0.147801
+Calculated size: 0.14827
+Calculated size: 0.148553
+Calculated size: 0.148112
+Calculated size: 0.14763
+Calculated size: 0.147666
+Calculated size: 0.14774
+Calculated size: 0.147887
+Calculated size: 0.1474
+Calculated size: 0.147321
+Calculated size: 0.147868
+Calculated size: 0.14766
+Calculated size: 0.147517
+Calculated size: 0.147372
+[백테스트 디버그] 거래 분석 데이터: AutoOrderedDict({'total': AutoOrderedDict({'total': 0})})
+[백테스트 디버그] 거래 로그:
+[백테스트 디버그] 백테스트 완료: 0개 거래, 승률: 0%, 손익비: 0
+INFO:     127.0.0.1:57838 - "POST /run-backtest HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'app/main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [13344]
+INFO:     Started server process [14792]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:59797 - "POST /confirm-strategy HTTP/1.1" 200 OK
+/Users/minsuk/Documents/llmtradingtest/backend/app/main.py:297: FutureWarning: DataFrame.fillna with 'method' is deprecated and will raise in a future version. Use obj.ffill() or obj.bfill() instead.
+  result_df = result_df.fillna(method='bfill')
+Binance API에서 2024-05-01~2024-05-31 데이터 가져오기 시작 (최대 10000개, 시간 간격: 1h)
+API 호출 1: 1000개 데이터 가져옴 (시작: 2024-05-01 00:00:00, 종료: 2024-06-11 15:00:00)
+종료 시간에 도달했습니다: 2024-06-11 15:00:00.001000 > 2024-05-31 00:00:00
+Binance API에서 총 721개 데이터를 가져왔습니다 (API 호출 횟수: 1, 시간 간격: 1h).
+INFO:     127.0.0.1:59888 - "POST /prepare-data HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59888 - "POST /backtest/set-debug HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59888 - "POST /generate-code HTTP/1.1" 200 OK
+[백테스트 디버그] 백테스트 요청: 2024-05-01 ~ 2024-05-31, 시간 간격: 1h
+[백테스트 디버그] CSV 파일 발견: btcusdt_1h_20250607_004522.csv. 이 파일을 백테스트에 사용합니다.
+[백테스트 디버그] CSV 파일 경로: /Users/minsuk/Documents/llmtradingtest/data/btcusdt_1h_20250607_004522.csv
+CSV 파일에서 데이터 로딩: /Users/minsuk/Documents/llmtradingtest/data/btcusdt_1h_20250607_004522.csv
+CSV 파일에서 721개 데이터를 로드했습니다: /Users/minsuk/Documents/llmtradingtest/data/btcusdt_1h_20250607_004522.csv
+컬럼: ['timestamp', 'open', 'high', 'low', 'close', 'volume', 'RSI']
+데이터 범위: 2024-05-01 00:00:00 ~ 2024-05-31 00:00:00
+[백테스트 디버그] 날짜 필터링: 721개 -> 721개 레코드
+[백테스트 디버그] RSI 컬럼이 존재합니다. RSI 값 범위: 23.38 ~ 88.53
+[백테스트 디버그] RSI < 30인 데이터 수: 28
+[백테스트 디버그] RSI > 70인 데이터 수: 71
+[백테스트 디버그] 데이터 로드 완료: 721개 레코드
+[백테스트 디버그] 데이터 범위: 2024-05-01 00:00:00 ~ 2024-05-31 00:00:00
+[백테스트 디버그] 데이터 컬럼: ['timestamp', 'open', 'high', 'low', 'close', 'volume', 'RSI']
+[백테스트 디버그] 첫 5개 데이터 샘플:
+            timestamp     open     high      low    close     volume        RSI
+0 2024-05-01 00:00:00  60651.2  60816.7  60060.6  60217.2  10900.384  23.785441
+1 2024-05-01 01:00:00  60217.3  60389.0  59833.0  60110.6  11290.556  23.785441
+2 2024-05-01 02:00:00  60110.6  60159.2  59555.0  59902.4  13309.707  23.785441
+3 2024-05-01 03:00:00  59902.3  60294.8  59873.0  60214.0   6341.794  23.785441
+4 2024-05-01 04:00:00  60214.0  60331.8  60156.2  60262.6   4701.579  23.785441
+[백테스트 디버그] 마지막 5개 데이터 샘플:
+              timestamp     open     high      low    close     volume        RSI
+716 2024-05-30 20:00:00  68705.0  68712.0  68068.8  68525.6  11383.873  53.279403
+717 2024-05-30 21:00:00  68525.5  68588.0  68368.1  68462.6   3166.786  52.220277
+718 2024-05-30 22:00:00  68462.6  68491.0  68273.6  68356.1   2652.130  50.396456
+719 2024-05-30 23:00:00  68356.2  68574.0  68284.0  68402.5   2737.253  51.196198
+720 2024-05-31 00:00:00  68402.6  68516.4  68316.0  68512.2   2852.615  53.120585
+[백테스트 디버그] 디버깅용 데이터 파일 저장: /Users/minsuk/Documents/llmtradingtest/data/debug_data_20250607_004525.csv
+[백테스트 디버그] Strategy 코드 실행 중...
+[백테스트 디버그] 전략 코드:
+==================================================
+class Strategy(bt.Strategy):
+    params = (
+        ('capital_pct', 0.3),
+        ('stop_loss', 2.0),
+        ('take_profit', 5.0),
+        ('commission', 0.0004),
+    )
+
+    def __init__(self):
+        self.rsi = bt.indicators.RSI(self.data.close)
+        self.order = None
+        self.price_entry = None
+
+    def next(self):
+        if not self.position:
+            if self.rsi[0] < 30:
+                size = (self.broker.getvalue() * self.params.capital_pct) / self.data.close[0]
+                size = max(0.001, size)
+                size = round(size, 6)
+                print(f"Buying size: {size}")
+                self.buy(size=size)
+        else:
+            if self.rsi[0] > 70:
+                print("Selling due to RSI > 70")
+                self.sell()
+            elif self.data.close[0] >= self.position.price * (1 + self.params.take_profit / 100):
+                print("Selling due to take profit")
+                self.sell()
+            elif self.data.close[0] <= self.position.price * (1 - self.params.stop_loss / 100):
+                print("Selling due to stop loss")
+                self.sell()
+==================================================
+[백테스트 디버그] Strategy 클래스 로드 성공
+[백테스트 디버그] 전략 파라미터: capital_pct=0.3, stop_loss=2.0%, take_profit=5.0%, commission=0.0004
+[백테스트 디버그] 시작 자본금: 10000.0
+[백테스트 디버그] 백테스트 실행 중...
+Buying size: 0.052209
+Selling due to take profit
+[백테스트 디버그] 경고: 거래 크기가 너무 작습니다: 0.0
+[백테스트 디버그] 거래 종료: {'entry_date': '2024-05-01 15:00:00', 'exit_date': '2024-05-03 13:00:00', 'entry_price': 57461.5, 'exit_price': 219104.40031732013, 'pnl': 161.64290031732014, 'pnl_pct': 281.3064405163808, 'size': 0.001}
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to stop loss
+Selling due to stop loss
+Selling due to stop loss
+Selling due to stop loss
+Selling due to stop loss
+Selling due to stop loss
+Selling due to stop loss
+Selling due to stop loss
+Selling due to stop loss
+Selling due to stop loss
+Selling due to stop loss
+Selling due to stop loss
+Selling due to stop loss
+Selling due to stop loss
+Selling due to stop loss
+Selling due to stop loss
+Selling due to stop loss
+Selling due to stop loss
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to RSI > 70
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to take profit
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to RSI > 70
+Selling due to take profit
+Selling due to RSI > 70
+Selling due to RSI > 70
+[백테스트 디버그] 거래 분석 데이터: AutoOrderedDict({'total': AutoOrderedDict({'total': 2, 'open': 1, 'closed': 1}), 'streak': AutoOrderedDict({'won': AutoOrderedDict({'current': 1, 'longest': 1}), 'lost': AutoOrderedDict({'current': 0, 'longest': 0})}), 'pnl': AutoOrderedDict({'gross': AutoOrderedDict({'total': 164.10854970000014, 'average': 164.10854970000014}), 'net': AutoOrderedDict({'total': 161.64290031732014, 'average': 161.64290031732014})}), 'won': AutoOrderedDict({'total': 1, 'pnl': AutoOrderedDict({'total': 161.64290031732014, 'average': 161.64290031732014, 'max': 161.64290031732014})}), 'lost': AutoOrderedDict({'total': 0, 'pnl': AutoOrderedDict({'total': 0.0, 'average': 0.0, 'max': 0.0})}), 'long': AutoOrderedDict({'total': 1, 'pnl': AutoOrderedDict({'total': 161.64290031732014, 'average': 161.64290031732014, 'won': AutoOrderedDict({'total': 161.64290031732014, 'average': 161.64290031732014, 'max': 161.64290031732014}), 'lost': AutoOrderedDict({'total': 0.0, 'average': 0.0, 'max': 0.0})}), 'won': 1, 'lost': 0}), 'short': AutoOrderedDict({'total': 0, 'pnl': AutoOrderedDict({'total': 0.0, 'average': 0.0, 'won': AutoOrderedDict({'total': 0.0, 'average': 0.0, 'max': 0.0}), 'lost': AutoOrderedDict({'total': 0.0, 'average': 0.0, 'max': 0.0})}), 'won': 0, 'lost': 0}), 'len': AutoOrderedDict({'total': 46, 'average': 46.0, 'max': 46, 'min': 46, 'won': AutoOrderedDict({'total': 46, 'average': 46.0, 'max': 46, 'min': 46}), 'lost': AutoOrderedDict({'total': 0, 'average': 0.0, 'max': 0}), 'long': AutoOrderedDict({'total': 46, 'average': 46.0, 'max': 46, 'min': 46, 'won': AutoOrderedDict({'total': 46, 'average': 46.0, 'max': 46, 'min': 46}), 'lost': AutoOrderedDict({'total': 0, 'average': 0.0, 'max': 0, 'min': 9223372036854775807})}), 'short': AutoOrderedDict({'total': 0, 'average': 0.0, 'max': 0, 'min': 9223372036854775807, 'won': AutoOrderedDict({'total': 0, 'average': 0.0, 'max': 0, 'min': 9223372036854775807}), 'lost': AutoOrderedDict({'total': 0, 'average': 0.0, 'max': 0, 'min': 9223372036854775807})})})})
+[백테스트 디버그] 거래 로그:
+[백테스트 디버그] 거래 #1: {'entry_date': '2024-05-01 15:00:00', 'exit_date': '2024-05-03 13:00:00', 'entry_price': 57461.5, 'exit_price': 219104.40031732013, 'pnl': 161.64290031732014, 'pnl_pct': 281.3064405163808, 'size': 0.001}
+[백테스트 디버그] 로거에서 추출한 거래 수: 1
+[백테스트 디버그] 거래 수 업데이트: 1
+[백테스트 디버그] 승률 재계산: 100.0% (1/1)
+[백테스트 디버그] 손익비 재계산: 999.99 (이익: 161.64290031732014, 손실: 0)
+[백테스트 디버그] 수익률 재계산: 1.62% (총 PnL: 161.64290031732014, 최종 자산: 10161.64290031732)
+[백테스트 디버그] 자산 곡선이 비정상적입니다. 재계산합니다.
+[백테스트 디버그] 자산 곡선 재계산 완료: [10161.64290031732]
+[백테스트 디버그] 백테스트 완료: 1개 거래, 승률: 100.0%, 손익비: 999.99
+INFO:     127.0.0.1:59888 - "POST /run-backtest HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'app/main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [14792]
+INFO:     Started server process [18542]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [18542]
+INFO:     Started server process [18614]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [18614]
+INFO:     Started server process [18938]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:63676 - "OPTIONS /confirm-strategy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63676 - "POST /confirm-strategy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63838 - "OPTIONS /prepare-data HTTP/1.1" 200 OK
+/Users/minsuk/Documents/llmtradingtest/backend/app/main.py:297: FutureWarning: DataFrame.fillna with 'method' is deprecated and will raise in a future version. Use obj.ffill() or obj.bfill() instead.
+  result_df = result_df.fillna(method='bfill')
+Binance API에서 2024-05-01~2024-05-31 데이터 가져오기 시작 (최대 10000개, 시간 간격: 1m)
+API 호출 1: 1000개 데이터 가져옴 (시작: 2024-05-01 00:00:00, 종료: 2024-05-01 16:39:00)
+API 호출 2: 1000개 데이터 가져옴 (시작: 2024-05-01 16:40:00, 종료: 2024-05-02 09:19:00)
+API 호출 3: 1000개 데이터 가져옴 (시작: 2024-05-02 09:20:00, 종료: 2024-05-03 01:59:00)
+API 호출 4: 1000개 데이터 가져옴 (시작: 2024-05-03 02:00:00, 종료: 2024-05-03 18:39:00)
+API 호출 5: 1000개 데이터 가져옴 (시작: 2024-05-03 18:40:00, 종료: 2024-05-04 11:19:00)
+API 호출 6: 1000개 데이터 가져옴 (시작: 2024-05-04 11:20:00, 종료: 2024-05-05 03:59:00)
+API 호출 7: 1000개 데이터 가져옴 (시작: 2024-05-05 04:00:00, 종료: 2024-05-05 20:39:00)
+API 호출 8: 1000개 데이터 가져옴 (시작: 2024-05-05 20:40:00, 종료: 2024-05-06 13:19:00)
+API 호출 9: 1000개 데이터 가져옴 (시작: 2024-05-06 13:20:00, 종료: 2024-05-07 05:59:00)
+API 호출 10: 1000개 데이터 가져옴 (시작: 2024-05-07 06:00:00, 종료: 2024-05-07 22:39:00)
+최대 데이터 포인트 수(10000)에 도달했습니다.
+Binance API에서 총 10000개 데이터를 가져왔습니다 (API 호출 횟수: 10, 시간 간격: 1m).
+INFO:     127.0.0.1:63839 - "POST /prepare-data HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63839 - "OPTIONS /backtest/set-debug HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63886 - "POST /backtest/set-debug HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63886 - "OPTIONS /generate-code HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63839 - "POST /generate-code HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/opt/anaconda3/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 404, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/lib/python3.12/site-packages/fastapi/applications.py", line 1054, in __call__
+    await super().__call__(scope, receive, send)
+  File "/opt/anaconda3/lib/python3.12/site-packages/starlette/applications.py", line 123, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/opt/anaconda3/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/opt/anaconda3/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/opt/anaconda3/lib/python3.12/site-packages/starlette/middleware/cors.py", line 91, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/opt/anaconda3/lib/python3.12/site-packages/starlette/middleware/cors.py", line 146, in simple_response
+    await self.app(scope, receive, send)
+  File "/opt/anaconda3/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/opt/anaconda3/lib/python3.12/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app
+    raise exc
+  File "/opt/anaconda3/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+  File "/opt/anaconda3/lib/python3.12/site-packages/starlette/routing.py", line 762, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/opt/anaconda3/lib/python3.12/site-packages/starlette/routing.py", line 782, in app
+    await route.handle(scope, receive, send)
+  File "/opt/anaconda3/lib/python3.12/site-packages/starlette/routing.py", line 297, in handle
+    await self.app(scope, receive, send)
+  File "/opt/anaconda3/lib/python3.12/site-packages/starlette/routing.py", line 77, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/opt/anaconda3/lib/python3.12/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app
+    raise exc
+  File "/opt/anaconda3/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+  File "/opt/anaconda3/lib/python3.12/site-packages/starlette/routing.py", line 72, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/lib/python3.12/site-packages/fastapi/routing.py", line 299, in app
+    raise e
+  File "/opt/anaconda3/lib/python3.12/site-packages/fastapi/routing.py", line 294, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/lib/python3.12/site-packages/fastapi/routing.py", line 191, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/minsuk/Documents/llmtradingtest/backend/app/main.py", line 392, in generate_code
+    print(f'매수 체결: 가격: {order.executed.price:.2f}, 수량: {order.executed.size:.6f}')
+                              ^^^^^
+NameError: name 'order' is not defined
+WARNING:  StatReload detected changes in 'app/main.py'. Reloading...
+INFO:     Shutting down

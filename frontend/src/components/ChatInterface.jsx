@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import '../styles/ChatInterface.css';
+import { FaRegCopy, FaRegEdit } from 'react-icons/fa';
 
 const ChatInterface = ({ timeframe, onBacktestResult, parameters }) => {
   const [messages, setMessages] = useState([
@@ -15,8 +16,8 @@ const ChatInterface = ({ timeframe, onBacktestResult, parameters }) => {
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [currentCode, setCurrentCode] = useState('');
+  const [editingMessageId, setEditingMessageId] = useState(null);
   const [editableCode, setEditableCode] = useState('');
-  const [isEditing, setIsEditing] = useState(false);
   
   // 타이핑 효과를 위한 상태 추가
   const [isTyping, setIsTyping] = useState(false);
@@ -136,237 +137,83 @@ const ChatInterface = ({ timeframe, onBacktestResult, parameters }) => {
   }, [isTyping, currentIndex, fullContent, currentTypingMessageId, isCodeTyping, typingCode, currentCode]);
 
   // 타이핑 효과 시작
-  const startTypingEffect = (content, code = null) => {
+  const startTypingEffect = (content, code = null, messageId = null) => {
     setFullContent(content);
     setDisplayedContent('');
     setCurrentIndex(0);
     setIsTyping(true);
-    
-    if (code) {
-      setTypingCode(code);
-      setIsCodeTyping(true);
-    } else {
-      setTypingCode('');
-      setIsCodeTyping(false);
+
+    if (code && messageId) {
+      // 메시지의 content와 code를 각각 타이핑 효과로 업데이트
+      let idx = 0;
+      let codeIdx = 0;
+      const typeChar = () => {
+        setMessages(prevMsgs => prevMsgs.map(msg =>
+          msg.id === messageId
+            ? {
+                ...msg,
+                content: content.slice(0, Math.min(idx + 1, content.length)),
+                code: code.slice(0, Math.max(0, codeIdx))
+              }
+            : msg
+        ));
+        if (idx < content.length) idx++;
+        if (codeIdx < code.length) codeIdx += 10; // 코드 타이핑은 10글자씩
+        if (idx < content.length || codeIdx < code.length) {
+          setTimeout(typeChar, 15);
+        } else {
+          setIsTyping(false);
+          setMessages(prevMsgs => prevMsgs.map(msg =>
+            msg.id === messageId
+              ? { ...msg, isTyping: false, content, code }
+              : msg
+          ));
+        }
+      };
+      typeChar();
+      return;
+    }
+
+    // content만 타이핑 효과 (코멘트 메시지)
+    if (messageId) {
+      let idx = 0;
+      const typeChar = () => {
+        setMessages(prevMsgs => prevMsgs.map(msg =>
+          msg.id === messageId ? { ...msg, content: content.slice(0, idx + 1) } : msg
+        ));
+        idx++;
+        if (idx < content.length) {
+          setTimeout(typeChar, 15);
+        } else {
+          setIsTyping(false);
+          setMessages(prevMsgs => prevMsgs.map(msg =>
+            msg.id === messageId ? { ...msg, isTyping: false, content } : msg
+          ));
+        }
+      };
+      typeChar();
     }
   };
 
-  // 메시지 전송 처리 (수정됨 - 단계별 처리)
+  // 메시지 전송 처리 (수정됨 - 타이핑 효과 적용, 코멘트 메시지 유지)
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    
     if (!inputMessage.trim()) return;
 
-    // 전략 확인 모드인 경우
-    if (isConfirmingStrategy) {
-      // '진행해줘' 또는 유사한 긍정적인 응답인 경우
-      if (
-        inputMessage.trim().toLowerCase().includes('진행') || 
-        inputMessage.trim().toLowerCase().includes('시작') || 
-        inputMessage.trim().toLowerCase().includes('네') || 
-        inputMessage.trim().toLowerCase().includes('예') || 
-        inputMessage.trim().toLowerCase().includes('좋아')
-      ) {
-        // 사용자 메시지 추가
-        const userMessage = {
-          id: messages.length + 1,
-          type: 'user',
-          content: inputMessage,
-          timestamp: new Date()
-        };
-        
-        setMessages(prev => [...prev, userMessage]);
-        setInputMessage('');
-        setIsLoading(true);
-        
-        // 로딩 메시지 추가
-        const loadingMessage = {
-          id: messages.length + 2,
-          type: 'assistant',
-          content: '데이터를 준비하고 있습니다...',
-          isLoading: true,
-          timestamp: new Date()
-        };
-        
-        setMessages(prev => [...prev, loadingMessage]);
-        
-        // 데이터 준비 API 호출
-        try {
-          const prepareRes = await axios.post('http://127.0.0.1:8000/prepare-data', {
-            strategy: currentStrategy,
-            capital: parameters.capital,
-            capital_pct: parameters.capital_pct,
-            stopLoss: parameters.stopLoss,
-            takeProfit: parameters.takeProfit,
-            startDate: parameters.startDate,
-            endDate: parameters.endDate,
-            commission: parameters.commission,
-            timeframe: timeframe
-          });
-          
-          // 로딩 메시지 제거
-          setMessages(prev => prev.filter(msg => !msg.isLoading));
-          
-          // 데이터 준비 완료 메시지 추가
-          const dataReadyMessage = {
-            id: messages.length + 2,
-            type: 'assistant',
-            content: `데이터 준비가 완료되었습니다. ${prepareRes.data.file_saved} 파일에 ${prepareRes.data.rows}개의 데이터가 저장되었습니다. 다음 기술 지표들이 추가되었습니다: ${prepareRes.data.indicators_added.join(', ')}`,
-            timestamp: new Date()
-          };
-          
-          setMessages(prev => [...prev, dataReadyMessage]);
-          setPreparedData(prepareRes.data);
-          
-          // 백테스트 시작 메시지 추가
-          const backtestStartMessage = {
-            id: messages.length + 3,
-            type: 'assistant',
-            content: '이제 백테스트를 시작합니다...',
-            isLoading: true,
-            timestamp: new Date()
-          };
-          
-          setMessages(prev => [...prev, backtestStartMessage]);
-          
-          // 코드 생성 API 호출
-          const genRes = await axios.post('http://127.0.0.1:8000/generate-code', {
-            strategy: currentStrategy,
-            capital: parameters.capital,
-            capital_pct: parameters.capital_pct,
-            stopLoss: parameters.stopLoss,
-            takeProfit: parameters.takeProfit,
-            startDate: parameters.startDate,
-            endDate: parameters.endDate,
-            commission: parameters.commission,
-            timeframe: timeframe
-          });
-          
-          const code = genRes.data.code;
-          setCurrentCode(code);
-          
-          // 백테스트 실행 API 호출
-          const backtestRes = await axios.post('http://127.0.0.1:8000/run-backtest', {
-            code,
-            capital: parameters.capital,
-            capital_pct: parameters.capital_pct,
-            stop_loss: parameters.stopLoss,
-            take_profit: parameters.takeProfit,
-            start_date: parameters.startDate,
-            end_date: parameters.endDate,
-            commission: parameters.commission,
-            timeframe: timeframe
-          });
-          
-          const backtestResult = backtestRes.data;
-          
-          // 로딩 메시지 제거
-          setMessages(prev => prev.filter(msg => !msg.isLoading));
-          
-          // 백테스트 결과 메시지 추가
-          const resultContent = `백테스트 결과: 총 수익률: ${backtestResult.total_return?.toFixed(2)}%, 거래 횟수: ${backtestResult.num_trades || 0}회, 승률: ${backtestResult.win_rate?.toFixed(2) || 0}%, 최대 낙폭: ${backtestResult.max_drawdown?.toFixed(2) || 0}%`;
-          
-          const responseMessage = {
-            id: messages.length + 4,
-            type: 'assistant',
-            content: '', // 타이핑 효과로 채워질 예정
-            code: '',
-            timestamp: new Date(),
-            isTyping: true,
-            backtestResult: backtestResult
-          };
-          
-          setMessages(prev => [...prev, responseMessage]);
-          setCurrentTypingMessageId(messages.length + 4);
-          setIsLoading(false);
-          setIsConfirmingStrategy(false);
-          
-          // 타이핑 효과 시작
-          startTypingEffect(resultContent, code);
-          
-          // 부모 컴포넌트에 백테스트 결과 전달
-          if (onBacktestResult) {
-            onBacktestResult(backtestResult, currentStrategy, {
-              ...parameters,
-              timeframe: timeframe
-            });
-          }
-        } catch (error) {
-          console.error('Error during data preparation or backtest:', error);
-          
-          // 로딩 메시지 제거
-          setMessages(prev => prev.filter(msg => !msg.isLoading));
-          
-          // 에러 메시지 추가
-          const errorContent = "죄송합니다. 데이터 준비 또는 백테스트 중 오류가 발생했습니다. 다시 시도해주세요.";
-          const errorMessage = {
-            id: messages.length + 2,
-            type: 'error',
-            content: '', // 타이핑 효과로 채워질 예정
-            timestamp: new Date(),
-            isTyping: true
-          };
-          
-          setMessages(prev => [...prev, errorMessage]);
-          setCurrentTypingMessageId(messages.length + 2);
-          setIsLoading(false);
-          setIsConfirmingStrategy(false);
-          
-          // 타이핑 효과 시작
-          startTypingEffect(errorContent);
-        }
-      } else {
-        // 사용자가 계속 진행하기를 원하지 않는 경우
-        const userMessage = {
-          id: messages.length + 1,
-          type: 'user',
-          content: inputMessage,
-          timestamp: new Date()
-        };
-        
-        setMessages(prev => [...prev, userMessage]);
-        setInputMessage('');
-        
-        const cancelMessage = {
-          id: messages.length + 2,
-          type: 'assistant',
-          content: '백테스트가 취소되었습니다. 다른 전략이나 파라미터로 다시 시도해보세요.',
-          timestamp: new Date()
-        };
-        
-        setMessages(prev => [...prev, cancelMessage]);
-        setIsConfirmingStrategy(false);
-      }
-      
-      return;
-    }
-    
-    // 새로운 전략 입력 처리
+    // 사용자 메시지 추가
     const userMessage = {
       id: messages.length + 1,
       type: 'user',
       content: inputMessage,
       timestamp: new Date()
     };
-    
     setMessages(prev => [...prev, userMessage]);
     setInputMessage('');
     setIsLoading(true);
     setCurrentStrategy(inputMessage); // 전략 저장
-    
-    // 로딩 메시지 추가
-    const loadingMessage = {
-      id: messages.length + 2,
-      type: 'assistant',
-      content: '전략을 분석 중입니다...',
-      isLoading: true,
-      timestamp: new Date()
-    };
-    
-    setMessages(prev => [...prev, loadingMessage]);
-    
+
     try {
-      // 전략 확인 API 호출
+      // 1. 전략 분석(코멘트) 타이핑 효과로 출력
       const confirmRes = await axios.post('http://127.0.0.1:8000/confirm-strategy', {
         strategy: inputMessage,
         capital: parameters.capital,
@@ -378,88 +225,96 @@ const ChatInterface = ({ timeframe, onBacktestResult, parameters }) => {
         commission: parameters.commission,
         timeframe: timeframe
       });
-      
-      // 로딩 메시지 제거
-      setMessages(prev => prev.filter(msg => !msg.isLoading));
-      
-      // 전략 분석 결과
       const analysis = confirmRes.data.analysis;
-      
-      // 파라미터 확인 메시지 구성
-      const confirmContent = `
-트레이딩 전략을 분석했습니다.
-
-【전략 분석】
-• 사용 지표: ${analysis.indicators.join(', ')}
-• 진입 조건: ${analysis.entry_conditions}
-• 청산 조건: ${analysis.exit_conditions}
-• 전략 유형: ${analysis.strategy_type}
-
-【백테스트 파라미터】
-• 자본금: ${parameters.capital} USDT
-• 투입 비율: ${parameters.capital_pct * 100}%
-• 손절: ${parameters.stopLoss}%
-• 익절: ${parameters.takeProfit}%
-• 기간: ${parameters.startDate} ~ ${parameters.endDate}
-• 시간 간격: ${timeframe}
-• 수수료율: ${parameters.commission * 100}%
-
-이대로 백테스트를 진행하시겠습니까? '진행해줘'라고 답변해주세요.
-      `;
-      
-      // 응답 메시지 추가
-      const responseMessage = {
-        id: messages.length + 2,
+      const analysisContent = `\n【전략 분석】\n• 사용 지표: ${analysis.indicators.join(', ')}\n• 진입 조건: ${analysis.entry_conditions}\n• 청산 조건: ${analysis.exit_conditions}\n• 전략 유형: ${analysis.strategy_type}`;
+      const analysisMessageId = messages.length + 2;
+      const analysisMessage = {
+        id: analysisMessageId,
         type: 'assistant',
-        content: confirmContent,
+        content: '', // 타이핑 효과로 채워질 예정
         timestamp: new Date(),
+        isTyping: true,
         analysis: analysis
       };
-      
-      setMessages(prev => [...prev, responseMessage]);
-      setIsLoading(false);
-      setIsConfirmingStrategy(true); // 전략 확인 모드로 변경
-      
-    } catch (error) {
-      console.error('Error during strategy confirmation:', error);
-      
-      // 로딩 메시지 제거
-      setMessages(prev => prev.filter(msg => !msg.isLoading));
-      
-      // 에러 메시지 추가
-      const errorContent = "죄송합니다. 전략 분석 중 오류가 발생했습니다. 다른 전략을 시도해보세요.";
-      const errorMessage = {
-        id: messages.length + 2,
-        type: 'error',
+      setMessages(prev => [...prev, analysisMessage]);
+      setCurrentTypingMessageId(analysisMessageId);
+      // 분석 코멘트 타이핑 효과 시작 (messageId 전달)
+      await new Promise((resolve) => {
+        startTypingEffect(analysisContent, null, analysisMessageId);
+        // 타이핑 효과가 끝날 때까지 대기
+        const checkTyping = () => {
+          setTimeout(() => {
+            if (!isTyping) resolve();
+            else checkTyping();
+          }, 50);
+        };
+        checkTyping();
+      });
+
+      // 2. 코드 생성 API 호출 및 코드 타이핑 효과로 출력
+      const genRes = await axios.post('http://127.0.0.1:8000/generate-code', {
+        strategy: inputMessage,
+        capital: parameters.capital,
+        capital_pct: parameters.capital_pct,
+        stopLoss: parameters.stopLoss,
+        takeProfit: parameters.takeProfit,
+        startDate: parameters.startDate,
+        endDate: parameters.endDate,
+        commission: parameters.commission,
+        timeframe: timeframe
+      });
+      const code = genRes.data.code;
+      setCurrentCode(code);
+      setEditableCode(code);
+      const codeMessageId = messages.length + 3;
+      const codeMessage = {
+        id: codeMessageId,
+        type: 'assistant',
         content: '', // 타이핑 효과로 채워질 예정
+        code: '',
         timestamp: new Date(),
         isTyping: true
       };
-      
-      setMessages(prev => [...prev, errorMessage]);
-      setCurrentTypingMessageId(messages.length + 2);
+      setMessages(prev => [...prev, codeMessage]);
+      setCurrentTypingMessageId(codeMessageId);
+      // 코드 타이핑 효과 시작 (messageId 전달)
+      await new Promise((resolve) => {
+        startTypingEffect('아래는 변환된 Python 코드입니다. 필요시 바로 수정 후 실행할 수 있습니다.', code, codeMessageId);
+        // 코드 타이핑 효과가 끝날 때까지 대기
+        const checkTyping = () => {
+          setTimeout(() => {
+            if (!isTyping && !isCodeTyping) resolve();
+            else checkTyping();
+          }, 50);
+        };
+        checkTyping();
+      });
+      setEditingMessageId(codeMessageId); // 코드 에디터 활성화
       setIsLoading(false);
-      setIsConfirmingStrategy(false);
-      
-      // 타이핑 효과 시작
-      startTypingEffect(errorContent);
+    } catch (error) {
+      setIsLoading(false);
+      const errorMessage = {
+        id: messages.length + 2,
+        type: 'error',
+        content: '전략 분석 또는 코드 변환 중 오류가 발생했습니다. 다시 시도해주세요.',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
     }
   };
 
   // 코드 편집 시작
-  const handleEditCode = (code) => {
+  const handleEditCode = (messageId, code) => {
+    setEditingMessageId(messageId);
     setEditableCode(code);
-    setIsEditing(true);
   };
 
   // 수정된 코드 저장 및 백테스트 재실행
-  const handleSaveEdit = async () => {
-    setIsEditing(false);
-    setCurrentCode(editableCode);
+  const handleSaveEdit = async (messageId) => {
     setIsLoading(true);
-    
+    setEditingMessageId(null);
+    setCurrentCode(editableCode);
     try {
-      // 백테스트 재실행
       const backtestRes = await axios.post('http://127.0.0.1:8000/run-backtest', {
         code: editableCode,
         capital: parameters.capital,
@@ -471,9 +326,7 @@ const ChatInterface = ({ timeframe, onBacktestResult, parameters }) => {
         commission: parameters.commission,
         timeframe: timeframe
       });
-      
       const backtestResult = backtestRes.data;
-      
       // 결과 메시지 추가
       const resultContent = `수정된 코드로 백테스트를 실행했습니다. 총 수익률: ${backtestResult.total_return?.toFixed(2)}%, 거래 횟수: ${backtestResult.num_trades || 0}회`;
       const resultMessage = {
@@ -483,37 +336,43 @@ const ChatInterface = ({ timeframe, onBacktestResult, parameters }) => {
         code: editableCode,
         timestamp: new Date()
       };
-      
       setMessages(prev => [...prev, resultMessage]);
       setIsLoading(false);
-      
-      // 부모 컴포넌트에 백테스트 결과 전달
       if (onBacktestResult) {
-        onBacktestResult(backtestResult, "사용자 정의 전략 (코드 수정)", {
+        onBacktestResult(backtestResult, '사용자 정의 전략 (코드 수정)', {
           ...parameters,
           timeframe: timeframe
         });
       }
-      
     } catch (error) {
       setIsLoading(false);
-      
-      // 에러 메시지 추가
       const errorMessage = {
         id: messages.length + 1,
         type: 'error',
-        content: "코드 실행 중 오류가 발생했습니다. 코드를 확인해주세요.",
+        content: '코드 실행 중 오류가 발생했습니다. 코드를 확인해주세요.',
         timestamp: new Date()
       };
-      
       setMessages(prev => [...prev, errorMessage]);
     }
   };
 
   // 코드 편집 취소
   const handleCancelEdit = () => {
-    setIsEditing(false);
+    setEditingMessageId(null);
     setEditableCode('');
+  };
+
+  const handleCopyCode = (code) => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(code);
+    } else {
+      const textarea = document.createElement('textarea');
+      textarea.value = code;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
   };
 
   return (
@@ -599,21 +458,49 @@ const ChatInterface = ({ timeframe, onBacktestResult, parameters }) => {
                 )}
                 
                 {message.code && (
-                  <div className="code-block">
-                    <div className="code-header">
-                      <span>생성된 Python 코드</span>
-                      {!isEditing && (
-                        <button 
-                          className="edit-button"
-                          onClick={() => handleEditCode(message.code)}
+                  <div className="gpt-code-block">
+                    <div className="gpt-code-header">
+                      <span className="gpt-code-title">생성된 Python 코드</span>
+                      <div className="gpt-code-actions">
+                        <button
+                          className="gpt-code-btn"
+                          title="코드 복사"
+                          onClick={() => handleCopyCode(message.code)}
                         >
-                          코드 수정
+                          <FaRegCopy /> 복사
                         </button>
-                      )}
+                        {editingMessageId !== message.id && (
+                          <button
+                            className="gpt-code-btn"
+                            title="코드 수정"
+                            onClick={() => handleEditCode(message.id, message.code)}
+                            disabled={isLoading}
+                          >
+                            <FaRegEdit /> 수정
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <pre className="code-content">
-                      <code>{message.code}</code>
-                    </pre>
+                    {editingMessageId === message.id ? (
+                      <>
+                        <textarea
+                          value={editableCode}
+                          onChange={e => setEditableCode(e.target.value)}
+                          rows={Math.max(10, editableCode.split('\n').length)}
+                          className="gpt-code-editor-textarea"
+                        ></textarea>
+                        <div className="gpt-editor-actions">
+                          <button onClick={handleCancelEdit} disabled={isLoading}>취소</button>
+                          <button onClick={() => handleSaveEdit(message.id)} disabled={isLoading}>
+                            {isLoading ? '실행 중...' : '저장 및 실행'}
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <pre className="gpt-code-content">
+                        <code>{message.code}</code>
+                      </pre>
+                    )}
                   </div>
                 )}
               </>
@@ -623,34 +510,18 @@ const ChatInterface = ({ timeframe, onBacktestResult, parameters }) => {
         <div ref={messagesEndRef} />
       </div>
       
-      {isEditing ? (
-        <div className="code-editor">
-          <textarea
-            value={editableCode}
-            onChange={(e) => setEditableCode(e.target.value)}
-            rows={10}
-          ></textarea>
-          <div className="editor-actions">
-            <button onClick={handleCancelEdit}>취소</button>
-            <button onClick={handleSaveEdit} disabled={isLoading}>
-              {isLoading ? '실행 중...' : '저장 및 실행'}
-            </button>
-          </div>
-        </div>
-      ) : (
-        <form className="chat-input" onSubmit={handleSendMessage}>
-          <input
-            type="text"
-            placeholder={isConfirmingStrategy ? "'진행해줘'라고 입력하세요..." : "트레이딩 전략을 자연어로 설명해주세요..."}
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            disabled={isLoading}
-          />
-          <button type="submit" disabled={isLoading || !inputMessage.trim()}>
-            {isLoading ? '처리 중...' : '전송'}
-          </button>
-        </form>
-      )}
+      <form className="chat-input" onSubmit={handleSendMessage}>
+        <input
+          type="text"
+          placeholder="트레이딩 전략을 자연어로 설명해주세요..."
+          value={inputMessage}
+          onChange={(e) => setInputMessage(e.target.value)}
+          disabled={isLoading}
+        />
+        <button type="submit" disabled={isLoading || !inputMessage.trim()}>
+          {isLoading ? '처리 중...' : '전송'}
+        </button>
+      </form>
     </div>
   );
 };

@@ -1204,4 +1204,102 @@
   .stats-grid {
     grid-template-columns: 1fr 1fr;
   }
+}
+
+/* === 챗GPT 스타일 코드 블록 === */
+.gpt-code-block {
+  background: #22252a;
+  border-radius: 8px;
+  border: 1px solid #34373c;
+  margin-top: 12px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+.gpt-code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #23272f;
+  padding: 8px 16px;
+  border-bottom: 1px solid #34373c;
+}
+.gpt-code-title {
+  font-size: 13px;
+  color: #b6bac2;
+  font-weight: 600;
+}
+.gpt-code-actions {
+  display: flex;
+  gap: 8px;
+}
+.gpt-code-btn {
+  background: none;
+  border: none;
+  color: #b6bac2;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 3px 8px;
+  border-radius: 5px;
+  transition: background 0.15s;
+}
+.gpt-code-btn:hover {
+  background: #31343a;
+  color: #fff;
+}
+.gpt-code-content {
+  padding: 16px;
+  font-family: 'Fira Mono', 'Menlo', 'Consolas', 'Liberation Mono', monospace;
+  font-size: 14px;
+  color: #e6e6e6;
+  background: transparent;
+  overflow-x: auto;
+  white-space: pre;
+}
+.gpt-code-content code {
+  background: none;
+  color: inherit;
+  font-size: inherit;
+}
+.gpt-code-editor-textarea {
+  width: 100%;
+  min-height: 200px;
+  background: #23272f;
+  color: #e6e6e6;
+  font-family: 'Fira Mono', 'Menlo', 'Consolas', 'Liberation Mono', monospace;
+  font-size: 14px;
+  border: none;
+  outline: none;
+  padding: 16px;
+  border-radius: 0 0 8px 8px;
+  resize: vertical;
+}
+.gpt-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px 16px 12px 16px;
+  background: #23272f;
+  border-top: 1px solid #34373c;
+}
+.gpt-editor-actions button {
+  background: #444b57;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.gpt-editor-actions button:hover:not(:disabled) {
+  background: #586175;
+}
+.gpt-editor-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 } 
